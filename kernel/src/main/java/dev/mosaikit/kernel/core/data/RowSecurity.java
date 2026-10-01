@@ -90,12 +90,20 @@ public class RowSecurity {
                 .toList();
     }
 
+    /*
+     * GRANT takes identifiers, which a prepared statement cannot bind: the schema and the role are
+     * quoted as identifiers by quote(), so they cannot end the identifier nor add SQL.
+     */
     private static void grant(Statement statement, String schema, String role) throws SQLException {
         String s = quote(schema);
         String r = quote(role);
+        // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
         statement.execute("grant usage on schema " + s + " to " + r);
+        // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
         statement.execute("grant select, insert, update, delete on all tables in schema " + s + " to " + r);
+        // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
         statement.execute("grant usage, select, update on all sequences in schema " + s + " to " + r);
+        // nosemgrep: java.lang.security.audit.formatted-sql-string.formatted-sql-string
         statement.execute("grant execute on all functions in schema " + s + " to " + r);
     }
 
@@ -123,6 +131,7 @@ public class RowSecurity {
         return name.length() <= MAX_ROLE ? name : "mk_" + cleaned.substring(0, MAX_ROLE - 10) + "_member";
     }
 
+    /** A PostgreSQL quoted identifier: in double quotes, with every double quote doubled. */
     static String quote(String identifier) {
         return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
