@@ -125,10 +125,14 @@
         <!-- The SQL migrations are for PostgreSQL, which SonarQube does not analyse: its PL/SQL
              analyser (Oracle) would read them because of the .sql suffix. -->
         <sonar.plsql.file.suffixes>pks,pkb</sonar.plsql.file.suffixes>
-        <!-- Accepted findings. e1: the documented password of the development mode. -->
-        <sonar.issue.ignore.multicriteria>e1</sonar.issue.ignore.multicriteria>
+        <!-- Accepted findings. e1: the documented password of the development mode. e2: CREATE ROLE
+             and GRANT take identifiers, which a prepared statement cannot bind; RowSecurity quotes
+             them as identifiers. -->
+        <sonar.issue.ignore.multicriteria>e1,e2</sonar.issue.ignore.multicriteria>
         <sonar.issue.ignore.multicriteria.e1.ruleKey>secrets:S2068</sonar.issue.ignore.multicriteria.e1.ruleKey>
         <sonar.issue.ignore.multicriteria.e1.resourceKey>**/application-dev.properties</sonar.issue.ignore.multicriteria.e1.resourceKey>
+        <sonar.issue.ignore.multicriteria.e2.ruleKey>java:S2077</sonar.issue.ignore.multicriteria.e2.ruleKey>
+        <sonar.issue.ignore.multicriteria.e2.resourceKey>**/kernel/core/data/RowSecurity.java</sonar.issue.ignore.multicriteria.e2.resourceKey>
         <sonar.coverage.exclusions>**/webui/src/main.ts,**/webui/src/mk-shell.ts,**/webui/src/mk-plugin-frame.ts,**/webui/src/mk-admin-plugins.ts,**/webui/src/mk-assistant.ts</sonar.coverage.exclusions>
     </properties>
 

@@ -11,7 +11,7 @@ import type { Catalog, KernelClient, Offer } from './api.js';
  */
 @customElement('mk-admin-plugins')
 export class MkAdminPlugins extends LitElement {
-  static override styles = css`
+  static override readonly styles = css`
     :host {
       display: block;
       max-width: 860px;
@@ -63,25 +63,7 @@ export class MkAdminPlugins extends LitElement {
         ${this.message ?? nothing}
       </p>
       <h2>Catalogs</h2>
-      ${
-        catalog === undefined
-          ? html`<p class="muted">Loading…</p>`
-          : catalog.sources.length === 0
-            ? html`<p class="muted">No catalog is configured (mosaikit.marketplace.sources).</p>`
-            : html`<ul>
-                ${catalog.sources.map(
-                  (source) =>
-                    html`<li>
-                      ${source.uri}:
-                      ${
-                        source.status === 'verified'
-                          ? html`verified, key ${source.keyId}`
-                          : html`<span class="error">refused, ${source.error}</span>`
-                      }
-                    </li>`,
-                )}
-              </ul>`
-      }
+      ${this.renderSources(catalog)}
       ${
         catalog && catalog.plugins.length > 0
           ? html`<table>
@@ -100,15 +82,7 @@ export class MkAdminPlugins extends LitElement {
                       <td>${offer.name}<br /><span class="muted">${offer.id}</span></td>
                       <td>${offer.version}</td>
                       <td>${offer.installedVersion ?? '—'}</td>
-                      <td>
-                        ${
-                          offer.state === 'available' || offer.state === 'update'
-                            ? html`<button type="button" @click=${() => void this.install(offer)}>
-                                ${offer.state === 'update' ? 'Update' : 'Install'}
-                              </button>`
-                            : html`<span class="muted">${offer.state}</span>`
-                        }
-                      </td>
+                      <td>${this.renderAction(offer)}</td>
                     </tr>`,
                 )}
               </tbody>
@@ -126,6 +100,37 @@ export class MkAdminPlugins extends LitElement {
         @change=${this.upload}
       />
     `;
+  }
+
+  private renderSources(catalog: Catalog | undefined): unknown {
+    if (catalog === undefined) {
+      return html`<p class="muted">Loading…</p>`;
+    }
+    if (catalog.sources.length === 0) {
+      return html`<p class="muted">No catalog is configured (mosaikit.marketplace.sources).</p>`;
+    }
+    return html`<ul>
+      ${catalog.sources.map(
+        (source) =>
+          html`<li>
+            ${source.uri}:
+            ${
+              source.status === 'verified'
+                ? html`verified, key ${source.keyId}`
+                : html`<span class="error">refused, ${source.error}</span>`
+            }
+          </li>`,
+      )}
+    </ul>`;
+  }
+
+  private renderAction(offer: Offer): unknown {
+    if (offer.state !== 'available' && offer.state !== 'update') {
+      return html`<span class="muted">${offer.state}</span>`;
+    }
+    return html`<button type="button" @click=${() => void this.install(offer)}>
+      ${offer.state === 'update' ? 'Update' : 'Install'}
+    </button>`;
   }
 
   private async refresh(): Promise<void> {

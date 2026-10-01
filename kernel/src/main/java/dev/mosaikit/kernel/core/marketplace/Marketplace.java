@@ -25,9 +25,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -149,7 +151,7 @@ public class Marketplace {
     private Installation place(byte[] bytes, Optional<PluginIndex.Entry> expected) {
         Path work = null;
         try {
-            work = Files.createTempDirectory("mosaikit-install-");
+            work = scratchDirectory();
             Path candidate = Files.write(work.resolve("candidate.zip"), bytes);
             PackageTrust trust = registry.trust();
             String keyId = verified(candidate, trust);
@@ -171,6 +173,20 @@ public class Marketplace {
         } finally {
             delete(work);
         }
+    }
+
+    /**
+     * A new directory to inspect a package, readable by the owner only where the file system has
+     * POSIX permissions: the temporary directory is shared by every user there.
+     */
+    private static Path scratchDirectory() throws IOException {
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            return Files.createTempDirectory(
+                    "mosaikit-install-",
+                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
+        }
+        // Without POSIX permissions (Windows) the temporary directory belongs to the user.
+        return Files.createTempDirectory("mosaikit-install-");
     }
 
     private static String verified(Path candidate, PackageTrust trust) throws IOException {
@@ -230,7 +246,7 @@ public class Marketplace {
     private Catalog read(URI uri) {
         try {
             byte[] index = sources.read(uri, PluginIndex.INDEX_FILE, maxBytes);
-            byte[] signature = sources.read(uri, PluginIndex.SIGNATURE_FILE, 64 * 1024);
+            byte[] signature = sources.read(uri, PluginIndex.SIGNATURE_FILE, 64L * 1024);
             String keyId = PluginIndex.verify(index, signature, registry.trust().trustedKeys());
             return new Catalog(new CatalogView.Source(uri.toString(), "verified", keyId, null), entries(index));
         } catch (IOException | PackageSignatureException | IllegalArgumentException e) {
@@ -243,18 +259,17 @@ public class Marketplace {
         if (tree.path("format").asInt() != PluginIndex.FORMAT) {
             throw new IOException("Unsupported index format " + tree.path("format"));
         }
-        List<PluginIndex.Entry> entries = new ArrayList<>();
-        for (JsonNode plugin : tree.path("plugins")) {
-            entries.add(new PluginIndex.Entry(
-                    plugin.path("id").asText(),
-                    plugin.path("version").asText(),
-                    plugin.path("name").asText(null),
-                    plugin.path("file").asText(),
-                    plugin.path("sha256").asText(),
-                    plugin.path("size").asLong(),
-                    plugin.path("publisherKey").asText("")));
-        }
-        return entries;
+        return tree.path("plugins")
+                .valueStream()
+                .map(plugin -> new PluginIndex.Entry(
+                        plugin.path("id").asText(),
+                        plugin.path("version").asText(),
+                        plugin.path("name").asText(null),
+                        plugin.path("file").asText(),
+                        plugin.path("sha256").asText(),
+                        plugin.path("size").asLong(),
+                        plugin.path("publisherKey").asText("")))
+                .toList();
     }
 
     private Map<String, String> installedVersions() {
@@ -273,8 +288,11 @@ public class Marketplace {
         }
         try {
             int comparison = Version.parse(offered).compareTo(Version.parse(installed));
-            return comparison == 0 ? "installed" : comparison > 0 ? "update" : "older";
-        } catch (IllegalArgumentException e) {
+            if (comparison == 0) {
+                return "installed";
+            }
+            return comparison > 0 ? "update" : "older";
+        } catch (IllegalArgumentException _) {
             return offered.equals(installed) ? "installed" : "update";
         }
     }
@@ -292,10 +310,17 @@ public class Marketplace {
             return;
         }
         try (Stream<Path> files = Files.walk(directory)) {
-            files.sorted(Comparator.reverseOrder())
-                    .forEach(path -> path.toFile().delete());
+            files.sorted(Comparator.reverseOrder()).forEach(Marketplace::deleteFile);
         } catch (IOException e) {
             LOG.debugf("Cannot delete %s: %s", directory, e.getMessage());
+        }
+    }
+
+    private static void deleteFile(Path path) {
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+            LOG.debugf("Cannot delete %s: %s", path, e.getMessage());
         }
     }
 }

@@ -11,7 +11,7 @@ import type { ChatMessage, KernelClient } from './api.js';
  */
 @customElement('mk-assistant')
 export class MkAssistant extends LitElement {
-  static override styles = css`
+  static override readonly styles = css`
     :host {
       display: block;
       border: 1px solid var(--mk-line);

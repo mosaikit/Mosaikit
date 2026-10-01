@@ -42,7 +42,10 @@ public final class PluginIndex {
     /** Version of the format of the index. */
     public static final int FORMAT = 1;
 
-    private static final Pattern TOP_LEVEL = Pattern.compile("^(id|version|name):\\s*(.*?)\\s*$");
+    /** A top-level key of the manifest; the value is stripped in code, not by the expression. */
+    private static final Pattern TOP_LEVEL = Pattern.compile("^(id|version|name):(.*)$");
+
+    private static final String ALGORITHM_PROPERTY = "algorithm";
 
     private PluginIndex() {}
 
@@ -132,12 +135,12 @@ public final class PluginIndex {
         Properties properties = new Properties();
         try {
             properties.load(new StringReader(new String(signature, StandardCharsets.ISO_8859_1)));
-        } catch (IOException e) {
+        } catch (IOException _) {
             throw new PackageSignatureException("Unreadable signature of the index");
         }
-        if (!SigningKeys.ALGORITHM.equals(properties.getProperty("algorithm"))) {
+        if (!SigningKeys.ALGORITHM.equals(properties.getProperty(ALGORITHM_PROPERTY))) {
             throw new PackageSignatureException(
-                    "Unsupported signature algorithm: " + properties.getProperty("algorithm"));
+                    "Unsupported signature algorithm: " + properties.getProperty(ALGORITHM_PROPERTY));
         }
         String keyId = properties.getProperty("key", "");
         PublicKey key = trustedKeys.get(keyId);
@@ -153,7 +156,7 @@ public final class PluginIndex {
     /** The signature file of an index. */
     static byte[] signature(byte[] index, KeyPair key) throws IOException {
         Properties properties = new Properties();
-        properties.setProperty("algorithm", SigningKeys.ALGORITHM);
+        properties.setProperty(ALGORITHM_PROPERTY, SigningKeys.ALGORITHM);
         properties.setProperty("key", SigningKeys.keyId(key.getPublic()));
         properties.setProperty(
                 "signature", Base64.getEncoder().encodeToString(PackageSignatures.signatureOf(key, index)));
@@ -227,7 +230,7 @@ public final class PluginIndex {
                 for (String line : new String(in.readNBytes(1024 * 1024), StandardCharsets.UTF_8).split("\\R")) {
                     Matcher matcher = TOP_LEVEL.matcher(line);
                     if (matcher.matches() && !identity.containsKey(matcher.group(1))) {
-                        identity.put(matcher.group(1), unquote(matcher.group(2)));
+                        identity.put(matcher.group(1), unquote(matcher.group(2).strip()));
                     }
                 }
             }

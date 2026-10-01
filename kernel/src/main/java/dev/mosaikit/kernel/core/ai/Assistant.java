@@ -34,6 +34,9 @@ public class Assistant {
 
     private static final Set<String> ROLES = Set.of("user", "assistant");
 
+    private static final String CONTENT = "content";
+    private static final String FUNCTION = "function";
+
     private static final String SYSTEM = """
             You are the assistant of Mosaikit, a platform of apps for public administrations. \
             Answer in the language of the person, briefly. Use the tools to read and change the data \
@@ -91,9 +94,9 @@ public class Assistant {
         check(conversation);
         List<AiTool> tools = actions.tools();
         ArrayNode messages = json.createArrayNode();
-        messages.addObject().put("role", "system").put("content", SYSTEM);
+        messages.addObject().put("role", "system").put(CONTENT, SYSTEM);
         conversation.forEach(
-                message -> messages.addObject().put("role", message.role()).put("content", message.content()));
+                message -> messages.addObject().put("role", message.role()).put(CONTENT, message.content()));
         List<ToolUse> used = new ArrayList<>();
         List<DraftView> drafts = new ArrayList<>();
         for (int step = 0; step < maxSteps; step++) {
@@ -105,10 +108,10 @@ public class Assistant {
             JsonNode message = call(request);
             JsonNode calls = message.path("tool_calls");
             if (!calls.isArray() || calls.isEmpty()) {
-                return new Reply(message.path("content").asText(""), used, drafts);
+                return new Reply(message.path(CONTENT).asText(""), used, drafts);
             }
             ObjectNode echoed = messages.addObject().put("role", "assistant");
-            echoed.put("content", message.path("content").asText(""));
+            echoed.put(CONTENT, message.path(CONTENT).asText(""));
             echoed.set("tool_calls", calls);
             for (JsonNode toolCall : calls) {
                 messages.add(run(toolCall, caller, used, drafts));
@@ -129,13 +132,9 @@ public class Assistant {
                 problems.add("messages must be at most " + MAX_MESSAGES);
             }
             for (int i = 0; i < conversation.size(); i++) {
-                Message message = conversation.get(i);
-                if (message == null || !ROLES.contains(message.role())) {
-                    problems.add("messages[" + i + "].role must be user or assistant");
-                } else if (message.content() == null || message.content().isBlank()) {
-                    problems.add("messages[" + i + "].content must not be empty");
-                } else if (message.content().length() > MAX_MESSAGE) {
-                    problems.add("messages[" + i + "].content must have at most " + MAX_MESSAGE + " characters");
+                String problem = problem(conversation.get(i));
+                if (problem != null) {
+                    problems.add("messages[" + i + "]." + problem);
                 }
             }
             if (problems.isEmpty() && !"user".equals(conversation.getLast().role())) {
@@ -145,6 +144,20 @@ public class Assistant {
         if (!problems.isEmpty()) {
             throw new InvalidInputException(problems);
         }
+    }
+
+    /** What is wrong with a message, or {@code null}. */
+    private static String problem(Message message) {
+        if (message == null || !ROLES.contains(message.role())) {
+            return "role must be user or assistant";
+        }
+        if (message.content() == null || message.content().isBlank()) {
+            return "content must not be empty";
+        }
+        if (message.content().length() > MAX_MESSAGE) {
+            return "content must have at most " + MAX_MESSAGE + " characters";
+        }
+        return null;
     }
 
     private JsonNode call(ObjectNode request) {
@@ -158,8 +171,7 @@ public class Assistant {
     private ArrayNode definitions(List<AiTool> tools) {
         ArrayNode definitions = json.createArrayNode();
         for (AiTool tool : tools) {
-            ObjectNode function =
-                    definitions.addObject().put("type", "function").putObject("function");
+            ObjectNode function = definitions.addObject().put("type", FUNCTION).putObject(FUNCTION);
             String description = tool.action().description().isBlank()
                     ? tool.action().title()
                     : tool.action().description();
@@ -176,12 +188,12 @@ public class Assistant {
 
     /** Runs one tool call of the model; returns the tool message for the model. */
     private ObjectNode run(JsonNode toolCall, Caller caller, List<ToolUse> used, List<DraftView> drafts) {
-        String name = toolCall.path("function").path("name").asText();
+        String name = toolCall.path(FUNCTION).path("name").asText();
         ObjectNode result = json.createObjectNode().put("role", "tool");
         result.put("tool_call_id", toolCall.path("id").asText(name));
         Object content;
         try {
-            Object arguments = arguments(toolCall.path("function").path("arguments"));
+            Object arguments = arguments(toolCall.path(FUNCTION).path("arguments"));
             Invocation invocation = actions.invoke(name, arguments, caller);
             if (invocation.isDrafted()) {
                 drafts.add(invocation.draft());
@@ -196,16 +208,19 @@ public class Assistant {
             used.add(new ToolUse(name, "failed"));
             content = Map.of("error", e.getMessage());
         }
-        result.put("content", write(content));
+        result.put(CONTENT, write(content));
         return result;
     }
 
     /** The arguments of a tool call: a JSON string in the OpenAI format, an object for some models. */
     private Object arguments(JsonNode raw) {
         try {
-            JsonNode tree = raw.isTextual() ? json.readTree(raw.asText().isBlank() ? "{}" : raw.asText()) : raw;
+            JsonNode tree = raw;
+            if (raw.isTextual()) {
+                tree = json.readTree(raw.asText().isBlank() ? "{}" : raw.asText());
+            }
             return tree.isMissingNode() || tree.isNull() ? Map.of() : json.convertValue(tree, Object.class);
-        } catch (JsonProcessingException e) {
+        } catch (JsonProcessingException _) {
             throw new InvalidInputException(List.of("arguments are not JSON"));
         }
     }
@@ -213,7 +228,7 @@ public class Assistant {
     private String write(Object value) {
         try {
             return json.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
+        } catch (JsonProcessingException _) {
             return String.valueOf(value);
         }
     }
