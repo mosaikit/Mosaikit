@@ -91,6 +91,8 @@ public class Marketplace {
             views.add(catalog.source());
             for (PluginIndex.Entry entry : catalog.entries()) {
                 String current = installed.get(entry.id());
+                boolean placed = !entry.version().equals(current)
+                        && Files.isRegularFile(registry.directory().resolve(packageFile(entry.id(), entry.version())));
                 offers.add(new CatalogView.Offer(
                         uri.toString(),
                         entry.id(),
@@ -99,7 +101,7 @@ public class Marketplace {
                         entry.size(),
                         entry.publisherKey(),
                         current,
-                        state(entry.version(), current)));
+                        placed ? "restart" : state(entry.version(), current)));
             }
         }
         offers.sort(Comparator.comparing(CatalogView.Offer::id).thenComparing(CatalogView.Offer::source));
@@ -169,7 +171,7 @@ public class Marketplace {
                 }
             });
             String replaced = setAside(plugin.key());
-            String file = SAFE_NAME.matcher(plugin.key() + "-" + version).replaceAll("_") + ".zip";
+            String file = packageFile(plugin.key(), version);
             Files.copy(candidate, registry.directory().resolve(file), StandardCopyOption.REPLACE_EXISTING);
             List<String> problems = plugin.status() == PluginStatus.ACTIVE ? List.of() : plugin.problems();
             return new Installation(plugin.key(), version, file, replaced, keyId, problems, true);
@@ -270,6 +272,11 @@ public class Marketplace {
                         InstalledPlugin::key,
                         plugin -> plugin.manifest().orElseThrow().version().toString(),
                         (first, second) -> first));
+    }
+
+    /** The name of the package of a plugin version in the plugins directory. */
+    static String packageFile(String id, String version) {
+        return SAFE_NAME.matcher(id + "-" + version).replaceAll("_") + ".zip";
     }
 
     /** How an offered version compares with the installed one. */

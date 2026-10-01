@@ -133,6 +133,11 @@ class MarketplaceTest {
                 .body("restartRequired", equalTo(true))
                 .body("replaced", nullValue());
         assertThat(PLUGINS.resolve(ID + "-1.0.0.zip")).exists();
+        // Until the restart the offer is waiting, so that nobody installs it twice.
+        asAdmin()
+                .get("/api/v1/marketplace")
+                .then()
+                .body("plugins.find { it.version == '1.0.0' }.state", equalTo("restart"));
 
         // At the next start the plugin is there; then an update replaces its package.
         registry.reload();

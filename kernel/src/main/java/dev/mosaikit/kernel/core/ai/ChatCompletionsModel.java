@@ -81,7 +81,11 @@ public class ChatCompletionsModel implements LanguageModel {
             }
             return message;
         } catch (IOException e) {
-            throw new UncheckedIOException("Cannot reach the model: " + e.getMessage(), e);
+            // A refused connection has no message: say where the model was expected instead.
+            String reason = e.getMessage() == null || e.getMessage().isBlank()
+                    ? "no answer at " + root + " (" + e.getClass().getSimpleName() + ")"
+                    : e.getMessage();
+            throw new UncheckedIOException("Cannot reach the model: " + reason, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new UncheckedIOException(new IOException("Interrupted while waiting for the model", e));

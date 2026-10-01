@@ -34,7 +34,8 @@ public record CatalogView(List<Source> sources, List<Offer> plugins) {
      * @param size size of the package in bytes
      * @param publisherKey key that signed the package
      * @param installedVersion version installed, if any
-     * @param state {@code available}, {@code installed}, {@code update} or {@code older}
+     * @param state {@code available}, {@code installed}, {@code update}, {@code older}, or {@code restart}
+     *     when the package of this version is in the plugins directory and waits for a restart
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Offer(

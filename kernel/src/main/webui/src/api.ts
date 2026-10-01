@@ -63,7 +63,8 @@ export interface Offer {
   size: number;
   publisherKey: string;
   installedVersion?: string;
-  state: 'available' | 'installed' | 'update' | 'older';
+  /** `restart`: the package of this version is in place and waits for a restart. */
+  state: 'available' | 'installed' | 'update' | 'older' | 'restart';
 }
 
 /** The catalogs of the marketplace and what they offer. */
@@ -111,22 +112,72 @@ export class KernelError extends Error {
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** Minimal client of the kernel API. Credentials are kept in memory only. */
+/** Where the shell remembers the organization chosen in the tab, which is not a secret. */
+const ORGANIZATION_KEY = 'mosaikit.organization';
+
+/** Header with which the kernel recognises the shell, which shows its own sign-in. */
+const CLIENT_HEADER = 'X-Mosaikit-Client';
+
+type KeyValueStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+
+function tabStorage(): KeyValueStore | undefined {
+  try {
+    return globalThis.sessionStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Minimal client of the kernel API. A local account signs in once: the kernel keeps the session
+ * in an HttpOnly cookie that scripts cannot read, so no password stays in the page and a reload
+ * keeps the session. Tokens of a realm are kept in memory only.
+ */
 export class KernelClient {
   private authorization: string | undefined;
   private organization: string | undefined;
+  private cookieSession = false;
 
-  constructor(private readonly fetchImpl: Fetch = (input, init) => fetch(input, init)) {}
+  constructor(
+    private readonly fetchImpl: Fetch = (input, init) => fetch(input, init),
+    private readonly storage: KeyValueStore | undefined = tabStorage(),
+  ) {}
 
-  /** Stores credentials for the following calls and checks them. */
+  /** Opens a session of the shell for a local account, and returns the account. */
   async signIn(username: string, password: string): Promise<Account> {
-    this.authorization = 'Basic ' + btoa(`${username}:${password}`);
-    try {
-      return await this.getJson<Account>('/api/v1/accounts/me');
-    } catch (error) {
-      this.authorization = undefined;
-      throw error;
+    const response = await this.fetchImpl('/api/v1/accounts/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', [CLIENT_HEADER]: 'shell' },
+      body: new URLSearchParams({ username, password }).toString(),
+    });
+    if (!response.ok) {
+      throw new KernelError(
+        response.status,
+        'Unauthorized',
+        response.status === 401
+          ? 'The email or the password is not correct.'
+          : 'Sign-in failed. Try again.',
+      );
     }
+    this.cookieSession = true;
+    this.organization = undefined;
+    this.storage?.removeItem(ORGANIZATION_KEY);
+    return this.getJson<Account>('/api/v1/accounts/me');
+  }
+
+  /**
+   * Finds the session of a local account again after a reload, in the organization chosen before;
+   * `undefined` when there is none.
+   */
+  async resumeSession(): Promise<Account | undefined> {
+    this.organization = this.storage?.getItem(ORGANIZATION_KEY) ?? undefined;
+    const response = await this.request('/api/v1/accounts/session');
+    if (response.status !== 200) {
+      this.organization = undefined;
+      return undefined;
+    }
+    this.cookieSession = true;
+    return (await response.json()) as Account;
   }
 
   /** Uses an access token of the realm of an organization for the following calls, and checks it. */
@@ -158,16 +209,34 @@ export class KernelClient {
    */
   async useOrganization(slug: string | undefined): Promise<Account> {
     this.organization = slug;
+    if (slug) {
+      this.storage?.setItem(ORGANIZATION_KEY, slug);
+    } else {
+      this.storage?.removeItem(ORGANIZATION_KEY);
+    }
     return this.getJson<Account>('/api/v1/accounts/me');
   }
 
-  signOut(): void {
+  /** Forgets the credentials, and ends the session of a local account on the kernel. */
+  signOut(): Promise<void> {
+    const ended = this.cookieSession
+      ? this.fetchImpl('/api/v1/accounts/session', {
+          method: 'DELETE',
+          headers: { [CLIENT_HEADER]: 'shell' },
+        }).then(
+          () => undefined,
+          () => undefined,
+        )
+      : Promise.resolve();
     this.authorization = undefined;
     this.organization = undefined;
+    this.cookieSession = false;
+    this.storage?.removeItem(ORGANIZATION_KEY);
+    return ended;
   }
 
   get signedIn(): boolean {
-    return this.authorization !== undefined;
+    return this.authorization !== undefined || this.cookieSession;
   }
 
   systemInfo(): Promise<SystemInfo> {
@@ -235,6 +304,7 @@ export class KernelClient {
       headers.set(ORGANIZATION_HEADER, this.organization);
     }
     headers.set('Accept', headers.get('Accept') ?? 'application/json');
+    headers.set(CLIENT_HEADER, 'shell');
     return this.fetchImpl(path, { ...init, headers });
   }
 

@@ -28,6 +28,8 @@ start). The kernel keeps its tables in the `mk_kernel` schema and each plugin in
 |---|---|---|
 | `quarkus.http.port` | `8080` | port |
 | `quarkus.http.host` | `0.0.0.0` | address to listen on |
+| `quarkus.http.auth.form.timeout` | `PT8H` | how long the session of the shell of a local account lasts without activity |
+| `quarkus.http.auth.session.encryption-key` | random at each start | key (at least 16 characters) that encrypts the session cookie; set the same on every kernel of a cluster, or sessions end at each restart |
 
 Terminate TLS at a reverse proxy or an ingress; in production the kernel sends
 `Strict-Transport-Security` and a `Content-Security-Policy`.

@@ -16,6 +16,7 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.BeforeEach;
@@ -295,6 +296,23 @@ class LauncherTest {
     void reportsTheExitCodeOfAFailedRebuild() {
         // The kernel of this test installation is not a JAR, so the re-augmentation fails at once.
         assertThat(Launcher.reaugment(installation)).isNotZero();
+    }
+
+    @Test
+    void rebuildsWithoutTheSettingsOfTheInstallation() {
+        // Quarkus records the values it sees while building as defaults of the rebuilt kernel: the
+        // rebuild must not see config/application.properties nor QUARKUS_* and MOSAIKIT_* variables.
+        ProcessBuilder rebuild = Launcher.rebuildProcess(installation);
+
+        assertThat(rebuild.directory().toPath()).isEqualTo(installation.kernel());
+        assertThat(rebuild.directory().toPath().resolve("config")).doesNotExist();
+        assertThat(rebuild.environment().keySet())
+                .noneMatch(name -> name.toUpperCase(Locale.ROOT).startsWith("QUARKUS_")
+                        || name.toUpperCase(Locale.ROOT).startsWith("MOSAIKIT_"));
+        assertThat(rebuild.command())
+                .contains(
+                        "-Dquarkus.launch.rebuild=true",
+                        installation.kernelJar().toString());
     }
 
     @Test

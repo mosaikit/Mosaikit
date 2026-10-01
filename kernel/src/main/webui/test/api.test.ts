@@ -3,32 +3,77 @@
 import { describe, expect, it, vi } from 'vitest';
 import { KernelClient, KernelError, ORGANIZATION_HEADER } from '../src/api.js';
 
+/** A storage of the tab, in memory. */
+function memory(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  };
+}
+
 const json = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 describe('KernelClient (MK-008)', () => {
-  it('signs in with basic credentials and reuses them', async () => {
+  it('opens a cookie session for a local account, without keeping the password', async () => {
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() =>
       Promise.resolve(json(200, { username: 'ada@example.org' })),
     );
-    const client = new KernelClient(fetchMock);
+    const client = new KernelClient(fetchMock, memory());
 
     const account = await client.signIn('ada@example.org', 'secret');
     await client.shellPlugins();
 
     expect(account.username).toBe('ada@example.org');
     expect(client.signedIn).toBe(true);
-    const headers = new Headers(fetchMock.mock.calls[1]?.[1]?.headers);
-    expect(headers.get('Authorization')).toBe('Basic ' + btoa('ada@example.org:secret'));
+    const [path, init] = fetchMock.mock.calls[0] ?? [];
+    expect(path).toBe('/api/v1/accounts/session');
+    expect(init?.method).toBe('POST');
+    expect(init?.body).toBe('username=ada%40example.org&password=secret');
+    const later = new Headers(fetchMock.mock.calls[2]?.[1]?.headers);
+    expect(later.get('Authorization')).toBeNull();
+    expect(later.get('X-Mosaikit-Client')).toBe('shell');
   });
 
   it('forgets credentials when sign-in fails', async () => {
-    const client = new KernelClient(() => Promise.resolve(new Response(null, { status: 401 })));
+    const client = new KernelClient(
+      () => Promise.resolve(new Response(null, { status: 401 })),
+      memory(),
+    );
 
     await expect(client.signIn('ada@example.org', 'wrong')).rejects.toMatchObject({
       status: 401,
       message: 'The email or the password is not correct.',
     });
+    expect(client.signedIn).toBe(false);
+  });
+
+  it('finds the session and the organization again after a reload', async () => {
+    const storage = memory();
+    storage.setItem('mosaikit.organization', 'globex');
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() =>
+      Promise.resolve(json(200, { username: 'ada@example.org', organization: 'globex' })),
+    );
+    const client = new KernelClient(fetchMock, storage);
+
+    const account = await client.resumeSession();
+
+    expect(account?.organization).toBe('globex');
+    expect(client.signedIn).toBe(true);
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/accounts/session');
+    expect(headers.get(ORGANIZATION_HEADER)).toBe('globex');
+  });
+
+  it('has no session to resume when the kernel has none', async () => {
+    const client = new KernelClient(
+      () => Promise.resolve(new Response(null, { status: 204 })),
+      memory(),
+    );
+
+    expect(await client.resumeSession()).toBeUndefined();
     expect(client.signedIn).toBe(false);
   });
 
@@ -51,13 +96,19 @@ describe('KernelClient (MK-008)', () => {
     await expect(client.systemInfo()).rejects.toMatchObject({ status: 500, title: 'Server Error' });
   });
 
-  it('clears credentials at sign-out', async () => {
-    const client = new KernelClient(() => Promise.resolve(json(200, {})));
+  it('ends the session on the kernel at sign-out', async () => {
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() =>
+      Promise.resolve(json(200, {})),
+    );
+    const client = new KernelClient(fetchMock, memory());
     await client.signIn('a@b.c', 'x');
 
-    client.signOut();
+    await client.signOut();
 
     expect(client.signedIn).toBe(false);
+    const last = fetchMock.mock.calls.at(-1);
+    expect(last?.[0]).toBe('/api/v1/accounts/session');
+    expect(last?.[1]?.method).toBe('DELETE');
   });
 
   it('signs in with an access token of a realm (MK-012)', async () => {
@@ -102,21 +153,24 @@ describe('KernelClient (MK-008)', () => {
     const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() =>
       Promise.resolve(json(200, { username: 'ada@example.org', organization: 'globex' })),
     );
-    const client = new KernelClient(fetchMock);
+    const storage = memory();
+    const client = new KernelClient(fetchMock, storage);
     await client.signIn('ada@example.org', 'secret');
 
     const account = await client.useOrganization('globex');
     await client.shellPlugins();
-    client.signOut();
+    await client.signOut();
     await client.systemInfo();
 
     expect(account.organization).toBe('globex');
     const header = (call: number) =>
       new Headers(fetchMock.mock.calls[call]?.[1]?.headers).get(ORGANIZATION_HEADER);
-    expect(header(0)).toBeNull();
-    expect(header(1)).toBe('globex');
+    // 0 opens the session, 1 reads the account, 4 ends the session
+    expect(header(1)).toBeNull();
     expect(header(2)).toBe('globex');
-    expect(header(3)).toBeNull();
+    expect(header(3)).toBe('globex');
+    expect(header(5)).toBeNull();
+    expect(storage.getItem('mosaikit.organization')).toBeNull();
   });
 
   it('lists, confirms and rejects the drafts of assistants (MK-015)', async () => {

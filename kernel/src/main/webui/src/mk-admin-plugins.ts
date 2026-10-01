@@ -125,6 +125,9 @@ export class MkAdminPlugins extends LitElement {
   }
 
   private renderAction(offer: Offer): unknown {
+    if (offer.state === 'restart') {
+      return html`<span class="muted">installed, restart Mosaikit to use it</span>`;
+    }
     if (offer.state !== 'available' && offer.state !== 'update') {
       return html`<span class="muted">${offer.state}</span>`;
     }
@@ -175,6 +178,8 @@ export class MkAdminPlugins extends LitElement {
     this.failed = false;
     const notes = problems && problems.length > 0 ? ` Note: ${problems.join('; ')}` : '';
     this.message = `${what} is installed: restart Mosaikit to use it.${notes}`;
+    // The table then shows the package as waiting for the restart, without an Install button.
+    void this.refresh();
   }
 
   private report(error: unknown): void {
