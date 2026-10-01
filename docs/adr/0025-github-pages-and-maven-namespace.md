@@ -21,18 +21,24 @@ more thing to pay for and keep running.
   GitHub organization. The Java packages (`dev.mosaikit.*`) and the plugin identifiers
   (`dev.mosaikit.sample.notes`) do not change: Maven Central does not check them, and they are
   part of the API.
-- **GitHub Pages.** Everything public is served by GitHub Pages of the organization, from public
-  repositories:
-  - `mosaikit.github.io` at `https://mosaikit.github.io/`: the site of the project, with the
-    marketplace pages that list the plugins of the catalog, and the JSON schemas
-    (`/schemas/plugin-manifest/0.1.json`, `/schemas/requirement/0.1.json`, the `$id` of the
-    schemas);
+- **GitHub Pages.** Everything public is served by GitHub Pages of the organization, from two
+  public repositories:
+  - `mosaikit.github.io` at `https://mosaikit.github.io/`: the site of the project; at `/catalog/`
+    the signed catalog of ADR-0021, built from the releases of the plugins listed in its
+    `catalog/catalog.yml` and a source for `mosaikit.marketplace.sources`; at `/marketplace/` a
+    page that lists the plugins of the catalog; at `/schemas/` the JSON schemas
+    (`plugin-manifest/0.1.json`, `requirement/0.1.json`, the `$id` of the schemas);
   - `mosaikit` at `https://mosaikit.github.io/mosaikit/`: `docs/` of the default branch, rendered
-    by Jekyll (`.github/workflows/docs.yml`);
-  - `catalog` at `https://mosaikit.github.io/catalog/`: the signed catalog of ADR-0021, a source
-    for `mosaikit.marketplace.sources`.
-- **Plugin repositories** are named `plugin-<name>` (`plugin-map`), which keeps them apart from the
-  other repositories of the organization.
+    by Jekyll (`.github/workflows/docs.yml`).
+- **Marketplace, first phase.** The Plugins page of the kernel (ADR-0021) is the marketplace: it
+  reads the catalog on GitHub Pages and installs from it. A marketplace with publishers, admission
+  checks and licences is a later step, as a plugin.
+- **Plugin repositories** are named after the main kind of the plugin: `app-<name>`,
+  `ext-<name>`, `service-<name>`, `theme-<name>`, `locale-<name>`, `auth-<name>` (`app-maps`,
+  id `dev.mosaikit.maps`). For the kernel they are all plugins; the kind is in the manifest, the
+  name only helps people find them. The apps ported from Geoportal (`app-catalog`, `app-maps`,
+  `app-dashboards`, `app-processes`) are plugins of the project like any other: the kernel stays
+  agnostic of their domain.
 
 ## Consequences
 
@@ -41,7 +47,10 @@ more thing to pay for and keep running.
 - The documentation on the site is the one of the default branch; the documents of a release
   (Word, PDF, Excel, PowerPoint) stay attached to the GitHub release.
 - Pages of the free plan serve only public repositories: what must stay private (the plugins under
-  development) is not on the site until it is released into the catalog.
+  development) is not on the site until it is released into the catalog. A catalog that reads
+  private releases needs a token (`CATALOG_TOKEN`).
+- Until the key of the catalog exists (`CATALOG_SIGNING_KEY`), the site is published without
+  `/catalog/`.
 
 ## Alternatives considered
 
