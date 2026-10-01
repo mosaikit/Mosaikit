@@ -72,6 +72,8 @@ class DocumentationTest {
                 missing.add(name);
             }
         }
-        assertThat(missing).as("settings missing from docs/user/configuration.md").isEmpty();
+        assertThat(missing)
+                .as("settings missing from docs/user/configuration.md")
+                .isEmpty();
     }
 }
