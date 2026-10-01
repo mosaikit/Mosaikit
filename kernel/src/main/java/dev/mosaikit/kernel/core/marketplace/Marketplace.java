@@ -25,11 +25,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -56,6 +54,13 @@ public class Marketplace {
 
     /** Where replaced packages are kept, ignored by the scan of plugins. */
     static final String PREVIOUS = ".previous";
+
+    /**
+     * Prefix of the directory where a package is inspected: in the plugins directory, which belongs
+     * to the kernel, rather than in the temporary directory that other users share; ignored by the
+     * scan of plugins.
+     */
+    private static final String INSTALLING = ".installing-";
 
     private static final Pattern SAFE_NAME = Pattern.compile("[^A-Za-z0-9._-]");
 
@@ -151,7 +156,7 @@ public class Marketplace {
     private Installation place(byte[] bytes, Optional<PluginIndex.Entry> expected) {
         Path work = null;
         try {
-            work = scratchDirectory();
+            work = Files.createTempDirectory(registry.directory(), INSTALLING);
             Path candidate = Files.write(work.resolve("candidate.zip"), bytes);
             PackageTrust trust = registry.trust();
             String keyId = verified(candidate, trust);
@@ -173,20 +178,6 @@ public class Marketplace {
         } finally {
             delete(work);
         }
-    }
-
-    /**
-     * A new directory to inspect a package, readable by the owner only where the file system has
-     * POSIX permissions: the temporary directory is shared by every user there.
-     */
-    private static Path scratchDirectory() throws IOException {
-        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
-            return Files.createTempDirectory(
-                    "mosaikit-install-",
-                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------")));
-        }
-        // Without POSIX permissions (Windows) the temporary directory belongs to the user.
-        return Files.createTempDirectory("mosaikit-install-");
     }
 
     private static String verified(Path candidate, PackageTrust trust) throws IOException {
