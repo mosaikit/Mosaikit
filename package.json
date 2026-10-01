@@ -1,0 +1,46 @@
+{
+  "name": "mosaikit-workspace",
+  "private": true,
+  "description": "Frontend of Mosaikit as npm workspaces: plugin SDK and kernel UI. The Maven build runs it.",
+  "license": "MPL-2.0",
+  "author": "Massimo Antonini",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "sdk/js",
+    "sdk/create-plugin",
+    "kernel/src/main/webui",
+    "plugins/sample-react",
+    "plugins/sample-vue"
+  ],
+  "scripts": {
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p docs/requirements && tsc -p docs/test && tsc -p sdk/java",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run lint && npm run typecheck && npm run test:coverage",
+    "verify": "npm run check && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.0",
+    "@vitest/coverage-v8": "^5.0.2",
+    "ajv": "^8.20.0",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.2",
+    "yaml": "^2.9.1"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "printWidth": 100,
+    "trailingComma": "all"
+  }
+}

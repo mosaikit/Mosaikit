@@ -1,0 +1,9 @@
+apiVersion: v2
+name: mosaikit
+description: Mosaikit kernel for SaaS and on-premises installations.
+type: application
+version: 0.1.0-SNAPSHOT
+appVersion: "0.1.0-SNAPSHOT"
+license: MPL-2.0
+maintainers:
+  - name: Massimo Antonini

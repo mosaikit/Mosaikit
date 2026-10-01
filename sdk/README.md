@@ -1,0 +1,35 @@
+# Mosaikit SDK
+
+Everything a third party needs to write a Mosaikit plugin, and nothing of the kernel itself.
+
+| Part | Artifact | For |
+|---|---|---|
+| `java/` | `dev.mosaikit:mosaikit-kernel-api` (Maven) | the Java code of a plugin: manifest model, versions, service interfaces. It depends on the JDK only |
+| `java/src/main/resources/.../plugin-manifest.schema.json` | in the same JAR | the JSON Schema of `manifest.yaml`, for editors and CI |
+| `js/` | `@mosaikit/sdk` (npm) | the frontend of a plugin: the context the shell passes to `activate(context)`, the event bus, the types of contributions |
+
+Both are published with each release: the Maven artifact in the Maven registry of the project,
+the npm package in its npm registry ([docs/developer/release.md](../docs/developer/release.md)).
+
+## A plugin in short
+
+```
+my-plugin/
+├── pom.xml          # only for Java code: dependencies with scope provided, and the package
+├── manifest.yaml    # id, version, what the plugin needs and contributes
+├── src/main/java/   # Java code (optional), compiled into lib/my-plugin.jar
+├── db/              # Flyway migrations of the plugin schema (optional)
+└── web/index.js     # frontend, an ES module that defines Web Components (optional)
+```
+
+The build produces `target/my-plugin-<version>.zip` with `manifest.yaml`, `lib/`, `db/` and
+`web/`; it is installed by copying it into `plugins/` of an installation, as it is. The samples in
+[`plugins/`](../plugins) are complete examples, and
+[docs/developer/plugin-development.md](../docs/developer/plugin-development.md) is the full guide.
+
+## Rules
+
+- Java: import only `mosaikit-kernel-api`, the Jakarta APIs and the Quarkus extensions the kernel
+  already contains, all with scope `provided`. Never the kernel itself.
+- Frontend: import only `@mosaikit/sdk`; any framework that produces custom elements works.
+- Talk to other plugins through the kernel (events, declared services), never by importing them.

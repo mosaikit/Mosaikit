@@ -1,0 +1,9 @@
+id: dev.mosaikit.test.java
+version: 1.0.0
+name: Java (test)
+description: Brings Java code, which only the launcher can load.
+kind: [service]
+platform: ">=0.1 <1"
+backend:
+  jar: lib/code.jar
+  api: test-java

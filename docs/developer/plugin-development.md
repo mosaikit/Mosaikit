@@ -1,0 +1,268 @@
+# Plugin development
+
+## Quick start
+
+`create-mosaikit-plugin` (MK-023, in `sdk/create-plugin`) writes a working plugin, so that you
+start from code that the kernel accepts:
+
+```bash
+npx @mosaikit/create-plugin dev.acme.traffic --name "Traffic"            # frontend only
+npx @mosaikit/create-plugin dev.acme.traffic --name "Traffic" --backend  # with Java, schema and actions
+cd traffic && mvn package                                                 # target/traffic-0.1.0.zip
+```
+
+From this repository, `node sdk/create-plugin/dist/bin.js` does the same after `npm run build`.
+The generated plugin has an app at `/app/traffic`; with `--backend`, a table under row-level
+security, a REST API under `/api/v1/p/traffic`, and two actions for assistants. Copy the zip (or
+the directory) into `plugins/` of an installation and start it with the launcher. The rest of this
+guide explains what each part does.
+
+## Anatomy
+
+```
+my-plugin/
+├── manifest.yaml     # the contract (JSON Schema in sdk/java)
+├── web/index.js      # ES module exporting the plugin frontend (optional)
+├── lib/my-plugin.jar # Java code, built from the sources of the plugin (optional)
+└── db/               # Flyway migrations of the plugin schema p_<name> (optional)
+```
+
+## Manifest
+
+```yaml
+id: dev.example.hello          # reverse-DNS, stable forever
+version: 1.0.0                 # semantic version
+name: Hello
+kind: [app]                    # app, extension, service, theme, locale, auth
+platform: ">=0.1 <1"           # kernel versions the plugin runs on
+requires:                      # other plugins, with accepted versions
+  dev.example.base: "^2"
+frontend:
+  entry: web/index.js
+  isolation: module            # module, or iframe to always run isolated (MK-014)
+  points: [hello.panel]        # extension points that other plugins contribute to (MK-020)
+  bridge:                      # what the frontend may do when it runs isolated
+    publishes: [hello.greeted]
+    subscribes: [maps.*]
+    services: [api]            # api: its own backend API, with the credentials of the person
+backend:
+  jar: lib/hello.jar           # Java code, loaded by the launcher at the next start
+  api: hello                   # REST resources under /api/v1/p/hello/
+actions:                       # tools for assistants and MCP clients (MK-015)
+  - name: greet                # [a-z][a-z0-9-]*, unique in the plugin
+    title: Greet someone
+    description: Says hello to a person by name.
+    risk: write                # read runs at once; write and execute need a confirmation
+    input:                     # JSON Schema subset: type, properties, required,
+      type: object             # additionalProperties, items, enum, lengths, bounds
+      properties:
+        name: {type: string, maxLength: 80}
+      required: [name]
+    call:
+      method: POST             # read actions must use GET
+      path: greetings/{name}   # relative to /api/v1/p/hello/; {name} comes from the input
+database:
+  schema: p_hello              # owned by the plugin; migrations in db/ (default)
+contributes:
+  launcher.app:
+    - id: hello
+      title: Hello
+      route: /app/hello        # /app/<name>
+      element: example-hello   # custom element rendered for the route
+```
+
+## Frontend contract
+
+The module's default export implements `MosaikitPlugin` from `@mosaikit/sdk`:
+
+```ts
+import { definePlugin } from '@mosaikit/sdk';
+
+export default definePlugin({
+  activate(context) {
+    customElements.define('example-hello', class extends HTMLElement { /* ... */ });
+    context.events.on('maps.selection.changed', (payload) => { /* ... */ });
+  },
+});
+```
+
+Any framework that produces custom elements can be used. Use the shell's CSS custom properties
+(`--mk-surface`, `--mk-fg`, `--mk-accent`, …) so that the plugin follows the theme.
+
+### Frontends written with a framework
+
+A frontend may use React, Vue or any framework ([ADR-0020](../adr/0020-frontends-in-any-framework.md)):
+bundle it with the framework into one ES module (Vite library mode, `formats: ['es']`) and declare
+that module as `frontend.entry`, as [`sample-react`](../../plugins/sample-react) and
+[`sample-vue`](../../plugins/sample-vue) do. Render inside the shadow root of your custom element,
+unmount in `disconnectedCallback`, style with the `--mk-*` tokens and talk to other plugins only
+through `context.events` and extension points.
+
+### Isolated frontends
+
+A frontend runs isolated in a sandboxed iframe (MK-014,
+[ADR-0015](../adr/0015-isolated-plugin-frontends.md)) when its manifest says
+`isolation: iframe`, or when its publisher is not verified (an unsigned package, a key the
+installation does not trust, a plugin directory) and the installation isolates such plugins
+(`mosaikit.plugins.unverified-frontends=iframe`, the default). The same module works in both
+modes, as long as it uses only its `context`:
+
+| In the context | Isolated |
+|---|---|
+| `events.publish(topic)` | only topics of `bridge.publishes` reach the shell |
+| `events.on(pattern)` | only patterns covered by `bridge.subscribes` receive events |
+| `fetch(path, init)` | only the backend API of the plugin (`/api/v1/p/<api>/…`, or a path relative to it), text bodies, with `bridge.services: [api]` |
+| `user`, `plugin`, `contributions`, `locale` | as usual |
+
+In the iframe the plugin has no access to the page of the shell, to its storage or to the
+credentials of the person, and it can load code and data only from the kernel. Declare the bridge
+even if you plan to run as a module: installations that isolate unverified plugins use it.
+
+## Java code
+
+[`plugins/sample-notes`](../../plugins/sample-notes) is a complete example: an entity, a Jakarta
+Data repository and a REST resource, with the migration of its schema.
+
+- Build the plugin as a Maven module whose dependencies all have scope `provided`: `mosaikit-kernel-api` (sdk/java),
+  the Jakarta APIs and the Quarkus extensions the kernel already contains (REST, Hibernate ORM,
+  Hibernate Validator, security). The JAR contains only the plugin's classes. A plugin cannot
+  bring new Quarkus extensions.
+- Generate the Jakarta Data repositories with the `quarkus-data-processor` annotation processor
+  and index the JAR with the Jandex plugin, as the sample does.
+- Put REST resources under `/api/v1/p/<api>/`, with the API name declared in `backend.api`. The
+  kernel requires authentication for every path there, whatever the resource declares, and
+  serves it only while the plugin is active.
+- Map entities to the plugin schema: `@Table(name = "note", schema = "p_sample_notes")`.
+
+Package it as one zip with only what the kernel needs, as the samples do with the shared
+descriptor `plugins/plugin-package.xml`: `manifest.yaml`, `lib/`, `db/`, `web/`, no sources. To
+install it, copy the zip into `plugins/` of an installation as it is and restart it with the
+`mosaikit` launcher. The launcher sees the new JAR, rebuilds the
+kernel in a few seconds and starts it; the kernel then migrates the plugin schema. Updating or
+removing the plugin works the same way. The status of each plugin is at `GET /api/v1/plugins`:
+`RESTART_REQUIRED` means that its JAR changed and the kernel was not started through the launcher.
+
+If the kernel cannot be rebuilt or started with a new or updated plugin, the launcher restores
+the previous build and starts it again; the plugin shows `INVALID` with the reason "Rolled back"
+until a different version of its JAR is installed. See the output of the launcher for the
+cause.
+
+In a container image, add Java plugins by building a derived image, so that the rebuild happens
+once, at image build time:
+
+```dockerfile
+FROM registry.gitlab.com/mosaikit/mosaikit:0.2.0
+COPY --chown=185 my-plugin-1.0.0.zip /opt/mosaikit/plugins/
+RUN /opt/mosaikit/mosaikit build
+```
+
+## Signing a package
+
+Installations can refuse packages that are not signed by a publisher they trust (MK-013,
+[ADR-0014](../adr/0014-signed-plugin-packages.md)). Sign every package you publish with the tool in
+the JAR of the Java plugin API:
+
+```bash
+API=mosaikit-kernel-api-0.1.0.jar
+TOOL=dev.mosaikit.kernel.api.signature.PackageSigningTool
+java -cp $API $TOOL keygen ~/keys acme            # once: acme.pub.pem and acme.key.pem (secret)
+java -cp $API $TOOL sign ~/keys/acme target/my-plugin-1.0.0.zip
+java -cp $API $TOOL verify ~/keys target/my-plugin-1.0.0.zip
+```
+
+Give `acme.pub.pem` to the administrators: they copy it into `config/trusted-keys` of their
+installation. Signing again replaces the signature; changing any file afterwards makes the package
+refused. A registry can store the signed zip as an OCI artifact as it is:
+
+```bash
+oras push registry.example.org/plugins/my-plugin:1.0.0 \
+  my-plugin-1.0.0.zip:application/vnd.mosaikit.plugin.v1+zip
+oras pull registry.example.org/plugins/my-plugin:1.0.0 -o plugins/
+```
+
+## Data of organizations
+
+Every request to a plugin API acts on one organization of the signed-in person (MK-017,
+[ADR-0016](../adr/0016-membership-of-several-organizations.md)). Store the organization with
+every row and filter on it, so that data of other organizations are never visible:
+
+```java
+@Path("/api/v1/p/notes/notes")
+public class NoteResource {
+    @Inject CurrentOrganization organization;   // dev.mosaikit.kernel.api.context
+
+    @GET
+    public List<NoteView> list() {
+        return notes.findByOrganization(organization.require()).stream().map(NoteView::of).toList();
+    }
+}
+```
+
+`require()` answers `403` when a request has no organization; the kernel already refuses such
+requests to plugin APIs.
+
+Then let the database enforce it (MK-019, [ADR-0018](../adr/0018-row-level-security.md)): give
+each table of organization data a row-level security policy on `mk_kernel.current_organization()`,
+which the kernel sets for every request. Queries that forget the filter still see only the rows
+of the organization, and rows of another organization cannot be written:
+
+```sql
+create table note (
+    id              uuid primary key,
+    organization_id uuid not null default mk_kernel.current_organization(),
+    text            varchar(500) not null
+);
+alter table note enable row level security;
+create policy note_organization on note
+    using (organization_id = mk_kernel.current_organization())
+    with check (organization_id = mk_kernel.current_organization());
+```
+
+Do not reference the tables of the kernel nor of other plugins: extend the data of another
+plugin with a table of your own keyed by its identifiers, and read it through the views that
+plugin publishes as its data contract.
+
+## Extending another plugin
+
+A plugin extends another one on three levels ([ADR-0019](../adr/0019-plugins-extending-plugins.md)),
+as [`sample-estimates`](../../plugins/sample-estimates) extends
+[`sample-activities`](../../plugins/sample-activities):
+
+1. **Require it**, so that the kernel migrates it first and refuses yours without it:
+   `requires: { dev.mosaikit.sample.activities: '^0.1' }`.
+2. **Data**: keep your field in a table of your schema keyed by its identifiers, without a foreign
+   key, and read its data only through the views it publishes (`p_sample_activities.activity_v1`),
+   mapped as read-only entities. Publish your own views `with (security_invoker = true)`, so that
+   row-level security applies to whoever reads them.
+3. **Interface**: contribute a custom element to one of the points its frontend declares:
+
+   ```yaml
+   contributes:
+     activities.detail:
+       - id: estimate
+         element: mk-activity-estimate   # receives the activity in its activity-id attribute
+   ```
+
+   The owner of a point reads the contributions with `context.contributionsTo('activities.detail')`
+   and creates the elements.
+4. **Behaviour**: publish and subscribe to events on the bus (`estimates.changed`,
+   `activities.completed`).
+
+## Actions for assistants
+
+An action is a call to the backend API of the plugin that an assistant may make on behalf of the
+signed-in person (ADR-0017). The kernel checks the arguments against `input`, puts the arguments
+named in `path` there, and sends the others as the query (`GET`, `DELETE`) or the JSON body. The
+call carries the credentials of the person and the organization of the request, so the usual
+`@RolesAllowed` checks and `CurrentOrganization` apply: an action never needs code of its own.
+Choose the risk honestly: `read` for calls without effects, `write` for changes of data, `execute`
+for processes, messages or anything that leaves the installation. Describe the action for a person
+who has to confirm it, not for the assistant only.
+
+## Rules
+
+- Import only `kernel-api`, the Jakarta APIs and the extensions provided by the kernel (Java) and
+  `@mosaikit/sdk` (frontend), plus the SPI modules of the plugins you declare in `requires`. Never
+  import the kernel itself (`mosaikit-kernel`).
+- Talk to other plugins through the event bus and declared services, never by importing them.
+- Keep one database schema per plugin, forward-only migrations, no foreign keys to other schemas.

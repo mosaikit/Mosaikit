@@ -1,0 +1,484 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-FileCopyrightText: 2026 Massimo Antonini
+  SPDX-License-Identifier: MPL-2.0
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>dev.mosaikit</groupId>
+    <artifactId>mosaikit-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Mosaikit</name>
+    <description>Domain-agnostic plugin platform for multi-organization web applications.</description>
+    <url>https://gitlab.com/mosaikit/mosaikit</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>MPL-2.0</name>
+            <url>https://mozilla.org/MPL/2.0/</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>antus</id>
+            <name>Massimo Antonini</name>
+            <email>massimo.anto@gmail.com</email>
+            <roles>
+                <role>author</role>
+                <role>maintainer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://gitlab.com/mosaikit/mosaikit</url>
+        <connection>scm:git:https://gitlab.com/mosaikit/mosaikit.git</connection>
+        <developerConnection>scm:git:git@gitlab.com:mosaikit/mosaikit.git</developerConnection>
+    </scm>
+
+    <issueManagement>
+        <system>GitLab</system>
+        <url>https://gitlab.com/mosaikit/mosaikit/-/issues</url>
+    </issueManagement>
+
+    <modules>
+        <!-- Order of the build: the plugin API, the sample plugins, the kernel, the distributions.
+             The frontend (npm workspaces) is built and tested by this POM before them. -->
+        <module>sdk/java</module>
+        <module>plugins/sample-hello</module>
+        <module>plugins/sample-notes</module>
+        <module>plugins/sample-activities</module>
+        <module>plugins/sample-estimates</module>
+        <module>plugins/sample-react</module>
+        <module>plugins/sample-vue</module>
+        <module>kernel</module>
+        <module>distributions</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <project.build.outputTimestamp>2026-09-29T00:00:00Z</project.build.outputTimestamp>
+
+        <!-- Platform versions (see docs/adr/0003 and docs/developer/versions.md) -->
+        <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
+        <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
+        <quarkus.platform.version>3.39.5</quarkus.platform.version>
+        <quarkus-quinoa.version>2.8.3</quarkus-quinoa.version>
+        <archunit.version>1.5.0</archunit.version>
+        <!-- Test libraries not managed by the Quarkus BOM -->
+        <assertj.version>3.27.7</assertj.version>
+
+        <!-- Build plugins (all lifecycle plugins are pinned so the build does not depend on the Maven version) -->
+        <clean-plugin.version>3.4.1</clean-plugin.version>
+        <resources-plugin.version>3.3.1</resources-plugin.version>
+        <jar-plugin.version>3.4.2</jar-plugin.version>
+        <install-plugin.version>3.1.4</install-plugin.version>
+        <deploy-plugin.version>3.1.4</deploy-plugin.version>
+        <site-plugin.version>3.21.0</site-plugin.version>
+        <compiler-plugin.version>3.15.0</compiler-plugin.version>
+        <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <enforcer-plugin.version>3.6.1</enforcer-plugin.version>
+        <jandex-plugin.version>3.3.1</jandex-plugin.version>
+        <jacoco-plugin.version>0.8.15</jacoco-plugin.version>
+        <spotless-plugin.version>3.10.3</spotless-plugin.version>
+        <!-- Pinned so formatting does not change with the plugin default; needs 2.72+ on JDK 25. -->
+        <palantir-java-format.version>2.98.0</palantir-java-format.version>
+        <pitest-plugin.version>1.30.0</pitest-plugin.version>
+        <pitest-junit5.version>1.2.3</pitest-junit5.version>
+        <versions-plugin.version>2.22.0</versions-plugin.version>
+        <cyclonedx-plugin.version>2.9.1</cyclonedx-plugin.version>
+        <exec-plugin.version>3.5.1</exec-plugin.version>
+        <antrun-plugin.version>3.1.0</antrun-plugin.version>
+        <assembly-plugin.version>3.7.1</assembly-plugin.version>
+
+        <!-- Frontend in the Maven build: -Dskip.npm skips it; its checks follow -DskipTests. -->
+        <skip.npm>false</skip.npm>
+        <skipTests>false</skipTests>
+        <npm.check.skip>${skipTests}</npm.check.skip>
+        <!-- Platforms of mvnw install -Pportable, separated by commas. -->
+        <portable.platforms>linux-x64,windows-x64,macos-arm64,macos-x64</portable.platforms>
+
+        <!-- SonarQube Cloud: keys shown in the project information page; override with -D if they differ. -->
+        <sonar.organization>mosaikit</sonar.organization>
+        <sonar.projectKey>mosaikit_mosaikit</sonar.projectKey>
+        <sonar.coverage.jacoco.xmlReportPaths>${maven.multiModuleProjectDirectory}/kernel/target/jacoco-report/jacoco.xml,${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <!-- The TypeScript SDK sits outside the Maven modules, so the root project analyses it; every
+             module sets its own sonar.sources and sonar.tests, since these properties are inherited. -->
+        <sonar.sources>pom.xml,package.json,sdk/js/src,sdk/js/package.json,sdk/create-plugin/src,sdk/create-plugin/package.json</sonar.sources>
+        <sonar.tests>sdk/js/test,sdk/create-plugin/test</sonar.tests>
+        <!-- Written by npm run test:coverage (the frontend job); paths relative to the repository root. -->
+        <sonar.javascript.lcov.reportPaths>${maven.multiModuleProjectDirectory}/coverage/lcov.info</sonar.javascript.lcov.reportPaths>
+        <!-- Excluded from the coverage in vitest.config.ts as well: bootstrap code, tried in the browser. -->
+        <!-- The SQL migrations are for PostgreSQL, which SonarQube does not analyse: its PL/SQL
+             analyser (Oracle) would read them because of the .sql suffix. -->
+        <sonar.plsql.file.suffixes>pks,pkb</sonar.plsql.file.suffixes>
+        <!-- Accepted findings. e1: the documented password of the development mode. -->
+        <sonar.issue.ignore.multicriteria>e1</sonar.issue.ignore.multicriteria>
+        <sonar.issue.ignore.multicriteria.e1.ruleKey>secrets:S2068</sonar.issue.ignore.multicriteria.e1.ruleKey>
+        <sonar.issue.ignore.multicriteria.e1.resourceKey>**/application-dev.properties</sonar.issue.ignore.multicriteria.e1.resourceKey>
+        <sonar.coverage.exclusions>**/webui/src/main.ts,**/webui/src/mk-shell.ts,**/webui/src/mk-plugin-frame.ts,**/webui/src/mk-admin-plugins.ts,**/webui/src/mk-assistant.ts</sonar.coverage.exclusions>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>${quarkus.platform.artifact-id}</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>dev.mosaikit</groupId>
+                <artifactId>mosaikit-kernel-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.quarkiverse.quinoa</groupId>
+                <artifactId>quarkus-quinoa</artifactId>
+                <version>${quarkus-quinoa.version}</version>
+            </dependency>
+            <dependency>
+                <!-- JUnit 6 flavour: the Quarkus BOM ships JUnit 6. -->
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit6</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>${clean-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>${resources-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${jar-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>${install-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>${deploy-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-site-plugin</artifactId>
+                    <version>${site-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>${quarkus.platform.group-id}</groupId>
+                    <artifactId>quarkus-maven-plugin</artifactId>
+                    <version>${quarkus.platform.version}</version>
+                    <extensions>true</extensions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${compiler-plugin.version}</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <parameters>true</parameters>
+                        <compilerArgs>
+                            <arg>-Xlint:all,-processing,-serial</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${surefire-plugin.version}</version>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${surefire-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>io.smallrye</groupId>
+                    <artifactId>jandex-maven-plugin</artifactId>
+                    <version>${jandex-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <!-- Packages a plugin as one zip (plugins/plugin-package.xml): see plugins/README.md. -->
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>${assembly-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>plugin-package</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>single</goal>
+                            </goals>
+                            <configuration>
+                                <descriptors>
+                                    <descriptor>${maven.multiModuleProjectDirectory}/plugins/plugin-package.xml</descriptor>
+                                </descriptors>
+                                <finalName>${plugin.package.name}-${project.version}</finalName>
+                                <appendAssemblyId>false</appendAssemblyId>
+                                <attach>false</attach>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>${antrun-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>${exec-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <!-- Used by distributions/release/prepare.sh -->
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>${versions-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.pitest</groupId>
+                    <artifactId>pitest-maven</artifactId>
+                    <version>${pitest-plugin.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.pitest</groupId>
+                            <artifactId>pitest-junit5-plugin</artifactId>
+                            <version>${pitest-junit5.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-build-environment</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[25,)</version>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.9.6,)</version>
+                                </requireMavenVersion>
+                                <banDuplicatePomDependencyVersions/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless-plugin.version}</version>
+                <configuration>
+                    <java>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                        <removeUnusedImports/>
+                        <licenseHeader>
+                            <content>// SPDX-FileCopyrightText: $YEAR Massimo Antonini
+// SPDX-License-Identifier: MPL-2.0</content>
+                            <!-- Keep the Javadoc of package-info.java after the header. -->
+                            <delimiter>(package |import |/\*\*)</delimiter>
+                        </licenseHeader>
+                    </java>
+                </configuration>
+                <executions>
+                    <!-- Formats locally; CI runs with -Dspotless.apply.skip=true so that the check catches unformatted commits. -->
+                    <execution>
+                        <id>format</id>
+                        <goals>
+                            <goal>apply</goal>
+                        </goals>
+                        <phase>process-sources</phase>
+                    </execution>
+                    <execution>
+                        <id>check-format</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <!-- The frontend: SDK, kernel UI and requirements, as npm workspaces. It is built before
+                     the kernel, which packages the UI. -Dskip.npm skips it, -DskipTests its checks. -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <configuration>
+                    <executable>npm</executable>
+                    <workingDirectory>${project.basedir}</workingDirectory>
+                    <skip>${skip.npm}</skip>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>npm-ci</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>ci</argument>
+                                <argument>--no-audit</argument>
+                                <argument>--no-fund</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-build</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>
+                                <argument>run</argument>
+                                <argument>build</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-check</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${npm.check.skip}</skip>
+                            <arguments>
+                                <argument>run</argument>
+                                <argument>check</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>${cyclonedx-plugin.version}</version>
+                <inherited>false</inherited>
+                <configuration>
+                    <projectType>application</projectType>
+                    <outputFormat>json</outputFormat>
+                    <outputName>sbom</outputName>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <!-- -Dskip.npm: no frontend at all, also no frontend checks. -->
+            <id>skip-npm</id>
+            <activation>
+                <property>
+                    <name>skip.npm</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <npm.check.skip>true</npm.check.skip>
+            </properties>
+        </profile>
+        <profile>
+            <!-- Mutation testing: mvn -Pmutation verify -->
+            <id>mutation</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <executions>
+                            <execution>
+                                <id>mutation-coverage</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>mutationCoverage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <mutationThreshold>70</mutationThreshold>
+                            <timestampedReports>false</timestampedReports>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

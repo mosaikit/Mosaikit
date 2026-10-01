@@ -1,0 +1,5 @@
+id: dev.mosaikit.test.future
+version: 1.0.0
+name: Future (test)
+kind: [extension]
+platform: ">=9"

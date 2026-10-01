@@ -1,0 +1,53 @@
+# publiccode.yml — metadata for the Italian public administration software catalogue
+# (https://github.com/publiccodeyml/publiccode.yml)
+publiccodeYmlVersion: '0.4'
+
+name: Mosaikit
+url: 'https://gitlab.com/mosaikit/mosaikit'
+softwareVersion: '0.1.0-SNAPSHOT'
+releaseDate: '2026-09-29'
+platforms:
+  - web
+  - linux
+  - windows
+  - mac
+
+categories:
+  - application-development
+  - it-development
+
+developmentStatus: development
+softwareType: 'standalone/web'
+
+description:
+  en:
+    shortDescription: >-
+      Domain-agnostic plugin platform for multi-organization web applications.
+    longDescription: >-
+      Mosaikit provides a small kernel with identity, organizations, users, localization,
+      theming and plugin management. Every product feature is a plugin that can extend the
+      user interface, the backend API and the database schema, and can itself be extended by
+      other plugins. It ships as a portable application, a container image and a Helm chart
+      for SaaS and on-premises deployments. This description is a placeholder and will be
+      extended before the first release, as required by the publiccode.yml specification.
+    features:
+      - Plugin system with frontend, backend and database extensions
+      - Multi-organization identity with local accounts and federation
+      - Plugin marketplace with signed packages
+
+legal:
+  license: MPL-2.0
+  mainCopyrightOwner: Massimo Antonini
+  repoOwner: Massimo Antonini
+
+maintenance:
+  type: internal
+  contacts:
+    - name: Massimo Antonini
+      email: 'massimo.anto@gmail.com'
+
+localisation:
+  localisationReady: true
+  availableLanguages:
+    - en
+    - it

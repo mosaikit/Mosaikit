@@ -1,0 +1,41 @@
+# Build output
+target/
+dist/
+build/
+# ...except the sources of the release documents.
+!docs/build/
+.quinoa/
+*.log
+
+# Node
+node_modules/
+.vite/
+coverage/
+
+# IDE
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.classpath
+.project
+.settings/
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.key
+
+# Local runtime data
+.mosaikit/
+
+# Plugin JARs built from sources (plugins/*/backend)
+plugins/*/lib/

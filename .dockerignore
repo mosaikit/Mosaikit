@@ -1,0 +1,10 @@
+**/node_modules
+**/target
+**/dist
+plugins/*/lib
+.quinoa
+**/.m2
+**/coverage
+.git
+*.md
+!README.md

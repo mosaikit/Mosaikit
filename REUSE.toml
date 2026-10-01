@@ -1,0 +1,36 @@
+version = 1
+
+[[annotations]]
+path = ["**/*.md", "**/*.json", "**/*.yaml", "**/*.yml", "**/*.toml", ".editorconfig", ".gitattributes", ".gitignore", ".gitleaksignore", "NOTICE", "**/*.svg"]
+SPDX-FileCopyrightText = "2026 Massimo Antonini"
+SPDX-License-Identifier = "MPL-2.0"
+
+[[annotations]]
+# Apache Maven Wrapper scripts, unmodified apart from the version placeholder.
+path = ["mvnw", "mvnw.cmd", ".mvn/wrapper/maven-wrapper.properties"]
+SPDX-FileCopyrightText = "The Apache Software Foundation"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+# Placeholder standing for a plugin JAR in the kernel tests.
+path = "kernel/src/test/resources/plugins/java/lib/code.jar"
+SPDX-FileCopyrightText = "2026 Massimo Antonini"
+SPDX-License-Identifier = "MPL-2.0"
+
+[[annotations]]
+# Plain-text notes shipped inside the portable archives.
+path = ["distributions/portable/README.txt", "distributions/portable/licenses/README.txt"]
+SPDX-FileCopyrightText = "2026 Massimo Antonini"
+SPDX-License-Identifier = "MPL-2.0"
+
+[[annotations]]
+# Copyright notice of PostgreSQL, shipped with its binaries in the portable archives.
+path = "distributions/portable/licenses/PostgreSQL-COPYRIGHT.txt"
+SPDX-FileCopyrightText = "The PostgreSQL Global Development Group"
+SPDX-License-Identifier = "PostgreSQL"
+
+[[annotations]]
+# License of the zonky embedded-postgres binaries, shipped in the portable archives.
+path = "distributions/portable/licenses/zonky-embedded-postgres-binaries-Apache-2.0.txt"
+SPDX-FileCopyrightText = "Tomas Vanek"
+SPDX-License-Identifier = "Apache-2.0"

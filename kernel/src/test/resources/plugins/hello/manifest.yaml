@@ -1,0 +1,12 @@
+id: dev.mosaikit.test.hello
+version: 1.0.0
+name: Hello (test)
+kind: [app]
+platform: ">=0.1 <1"
+frontend:
+  entry: web/index.js
+contributes:
+  launcher.app:
+    - id: hello
+      route: /app/hello
+      title: Hello

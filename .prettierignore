@@ -1,0 +1,12 @@
+**/dist/
+**/target/
+**/coverage/
+node_modules/
+package-lock.json
+docs/adr/
+docs/*.md
+*.md
+kernel/src/test/resources/
+distributions/k8s/
+LICENSES/
+LICENSE
