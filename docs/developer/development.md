@@ -112,13 +112,13 @@ curl -u admin -X PUT localhost:8080/api/v1/organizations/<slug>/identity \
 
 ## CI
 
-The pipeline (`.gitlab-ci.yml`) runs on the instance runners of GitLab.com, on merge requests, on
-`main` and on release tags, and uses the compute minutes of the `mosaikit` group (Settings →
-Usage quotas). A newer pipeline of the same branch cancels the running one. The portable
-archives are built only on tags, or on demand on `main` (manual jobs).
+The workflow (`.github/workflows/ci.yml`) runs on the GitHub-hosted runners, on pull requests, on
+`main` and on release tags; for a public repository the runners are free. A newer run of the same
+branch or pull request cancels the running one. The portable archives are built only on tags, or
+on demand on `main` (Actions → CI → Run workflow).
 
 The code is analysed on SonarQube Cloud (organization `mosaikit`, project `mosaikit_mosaikit`):
-the `sonarqube` job runs when the CI/CD variable `SONAR_TOKEN` is defined, with Automatic Analysis
+the `sonarqube` job runs when the repository secret `SONAR_TOKEN` is defined, with Automatic Analysis
 turned off in SonarQube Cloud.
 
 ## Quality gate

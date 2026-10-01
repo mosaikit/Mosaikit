@@ -3,7 +3,7 @@
 publiccodeYmlVersion: '0.4'
 
 name: Mosaikit
-url: 'https://gitlab.com/mosaikit/mosaikit'
+url: 'https://github.com/mosaikit/mosaikit'
 softwareVersion: '0.1.0-SNAPSHOT'
 releaseDate: '2026-09-29'
 platforms:

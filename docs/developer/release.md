@@ -11,14 +11,18 @@ A signed tag `vX.Y.Z` (or `vX.Y.Z-rc.N` for a pre-release) starts the release pi
 | Job | Publishes to | What |
 |---|---|---|
 | `release-check` | — | Fails unless every artifact is at `X.Y.Z` and `CHANGELOG.md` has a `## [X.Y.Z]` section |
-| `container-image` | Container Registry | `$CI_REGISTRY_IMAGE:vX.Y.Z` built from `distributions/docker/Containerfile` |
-| `portable` | Generic package registry | `mosaikit-portable-vX.Y.Z-<platform>.zip` / `.tar.gz` for Windows, Linux and macOS, tested on Linux by `portable-test` |
-| `publish-maven` | Maven registry of the project | `mosaikit-parent` and `mosaikit-kernel-api`, the API that Java plugins compile against |
-| `publish-npm` | npm registry of the project | `@mosaikit/sdk` (dist-tag `latest`, or `next` for pre-releases) |
-| `publish-helm` | Helm registry of the project, channel `stable` | Chart `mosaikit-X.Y.Z.tgz` |
-| `docs` | Generic package registry | `mosaikit-docs-vX.Y.Z.zip`: guides in Word and PDF, compliance workbook (Excel), release overview (PowerPoint), extended release notes, `SHA256SUMS` |
-| `sign` | Generic package registry | cosign signature of the container image; `SHA256SUMS` of the portable archives and documents with its Sigstore bundle |
-| `release` | Releases page | GitLab release with the `CHANGELOG.md` section and links to image, packages and SBOM |
+| `container-image` | GitHub Container Registry | `ghcr.io/mosaikit/mosaikit:vX.Y.Z` built from `distributions/docker/Containerfile` |
+| `portable` | GitHub release | `mosaikit-portable-vX.Y.Z-<platform>.zip` / `.tar.gz` for Windows, Linux and macOS, tested on Linux by `portable-test` |
+| `publish-maven` | Maven Central | `mosaikit-parent` and `mosaikit-kernel-api`, the API that Java plugins compile against |
+| `publish-npm` | npmjs.org | `@mosaikit/sdk` (dist-tag `latest`, or `next` for pre-releases), with provenance |
+| `publish-helm` | GitHub Container Registry (OCI) | Chart `oci://ghcr.io/mosaikit/charts/mosaikit`, version `X.Y.Z` |
+| `docs` | GitHub release | `mosaikit-docs-X.Y.Z.zip`: guides in Word and PDF, compliance workbook (Excel), release overview (PowerPoint), extended release notes, `SHA256SUMS` |
+| `sign` | GitHub release | cosign signature of the container image; `SHA256SUMS` of the portable archives and documents with its Sigstore bundle |
+| `release` | Releases page | GitHub release with the `CHANGELOG.md` section, the portable archives, the documents, the SBOM and the signed checksums |
+
+The jobs are in `.github/workflows/ci.yml`. `publish-maven` and `publish-npm` run in the GitHub
+environment `release`, which holds the Maven Central token and the GPG key that signs the Maven
+artifacts; npm uses trusted publishing (OIDC) and needs no token.
 
 All the verification, quality and security jobs of a normal pipeline run first: a release is
 never published from a commit that does not pass them.
@@ -76,41 +80,41 @@ python3 docs/build/build.py --version 0.2.0-SNAPSHOT --output target/docs   # --
 ## Verifying a release
 
 ```bash
-# The container image, signed by the release pipeline of the project
-cosign verify registry.gitlab.com/mosaikit/mosaikit:v0.2.0 \
-  --certificate-identity-regexp 'https://gitlab.com/mosaikit/mosaikit//.gitlab-ci.yml@refs/tags/v.*' \
-  --certificate-oidc-issuer https://gitlab.com
+# The container image, signed by the release workflow of the project
+cosign verify ghcr.io/mosaikit/mosaikit:v0.2.0 \
+  --certificate-identity-regexp 'https://github.com/mosaikit/mosaikit/.github/workflows/ci.yml@refs/tags/v.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 # The checksums of the archives and documents, then the files themselves
 cosign verify-blob SHA256SUMS --bundle SHA256SUMS.sigstore.json \
-  --certificate-identity-regexp 'https://gitlab.com/mosaikit/mosaikit//.gitlab-ci.yml@refs/tags/v.*' \
-  --certificate-oidc-issuer https://gitlab.com
+  --certificate-identity-regexp 'https://github.com/mosaikit/mosaikit/.github/workflows/ci.yml@refs/tags/v.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 sha256sum --check --ignore-missing SHA256SUMS
 ```
 
 ## Consuming the published artifacts
 
-Maven, in the `pom.xml` of a plugin:
+Maven: `dev.mosaikit:mosaikit-kernel-api` is on Maven Central, so a plugin needs no repository
+configuration:
 
 ```xml
-<repositories>
-    <repository>
-        <id>mosaikit</id>
-        <url>https://gitlab.com/api/v4/projects/PROJECT_ID/packages/maven</url>
-    </repository>
-</repositories>
+<dependency>
+    <groupId>dev.mosaikit</groupId>
+    <artifactId>mosaikit-kernel-api</artifactId>
+    <version>0.2.0</version>
+    <scope>provided</scope>
+</dependency>
 ```
 
-npm, in the `.npmrc` of a plugin frontend:
+npm: `@mosaikit/sdk` is on npmjs.org:
 
-```
-@mosaikit:registry=https://gitlab.com/api/v4/projects/PROJECT_ID/packages/npm/
+```bash
+npm install @mosaikit/sdk
 ```
 
 Helm:
 
 ```bash
-helm repo add mosaikit https://gitlab.com/api/v4/projects/PROJECT_ID/packages/helm/stable
-helm install mosaikit mosaikit/mosaikit --version 0.2.0
+helm install mosaikit oci://ghcr.io/mosaikit/charts/mosaikit --version 0.2.0
 ```
 
-Private projects need a token: a deploy token or a personal access token with `read_api`.
+No token is needed: the project and its packages are public.

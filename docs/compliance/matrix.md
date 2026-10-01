@@ -24,11 +24,11 @@ Linee guida AgID per lo sviluppo del software sicuro, and OWASP ASVS 5.0 level 2
 | ID | Measure | Status | Evidence | NC |
 |---|---|---|---|---|
 | C-06 | Documented secure development life cycle | Compliant | [secure-development.md](secure-development.md), `CONTRIBUTING.md` | |
-| C-07 | Static analysis in CI, blocking | Compliant | `.gitlab-ci.yml` jobs `sast` (Semgrep) and `sonarqube` (quality gate) | |
+| C-07 | Static analysis in CI, blocking | Compliant | `.github/workflows/ci.yml` jobs `sast` (Semgrep) and `sonarqube` (quality gate) | |
 | C-08 | Secret scanning of the whole history | Compliant | job `secrets` (Gitleaks), `.gitleaksignore` | |
 | C-09 | Dependency scanning and SBOM | Compliant | jobs `sbom` (CycloneDX) and `dependency-scan` (Trivy) | |
-| C-10 | Dependency updates with a delay against compromised releases | Compliant | `.gitlab/renovate.json` (`minimumReleaseAge`) | |
-| C-11 | Code review of every change | Partial | `.gitlab/CODEOWNERS`, merge request templates | NC-03 |
+| C-10 | Dependency updates with a delay against compromised releases | Compliant | `.github/renovate.json` (`minimumReleaseAge`) | |
+| C-11 | Code review of every change | Partial | `.github/CODEOWNERS`, pull request template | NC-03 |
 | C-12 | Threat model of kernel and plugin model | Non-compliant | | NC-04 |
 | C-13 | Verification against ASVS 5.0 level 2 | Non-compliant | | NC-05 |
 | C-14 | Dynamic testing and penetration test | Non-compliant | | NC-06 |

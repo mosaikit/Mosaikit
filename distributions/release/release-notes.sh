@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Massimo Antonini
 # SPDX-License-Identifier: MPL-2.0
 #
-# Prints the CHANGELOG.md section of a version, used as the description of the GitLab release.
+# Prints the CHANGELOG.md section of a version, used as the description of the GitHub release.
 #
 #   release-notes.sh 0.2.0 > release-notes.md
 set -euo pipefail

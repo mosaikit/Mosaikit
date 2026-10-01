@@ -2,7 +2,7 @@
 
 Mosaikit comes in four forms, all built from the same kernel and accepting the same plugin
 packages. A build writes them to `target/dist` (see [building](../developer/development.md));
-a release publishes them on the GitLab release page.
+a release publishes them on the GitHub release page.
 
 | Distribution | For | Needs | Guide |
 |---|---|---|---|

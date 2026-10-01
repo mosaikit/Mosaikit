@@ -1,0 +1,636 @@
+# SPDX-FileCopyrightText: 2026 Massimo Antonini
+# SPDX-License-Identifier: MPL-2.0
+#
+# Pipeline: the same checks as `mvn verify` and `npm run verify` on a workstation, plus
+# SonarQube, security scans and packaging. Images and actions are pinned by tag; Renovate proposes
+# updates.
+#
+# A tag vX.Y.Z (see docs/developer/release.md) also runs the release: version check, container image
+# in GHCR, kernel-api and its parent POM in Maven Central, @mosaikit/sdk and @mosaikit/create-plugin
+# in npmjs.org, the Helm
+# chart in GHCR as an OCI artifact, and a GitHub release with the CHANGELOG section,
+# the portable archives, the documents, the SBOM and the signed checksums attached.
+#
+# Run it by hand (Actions > CI > Run workflow) on the default branch to build the portable archives
+# outside a release.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+
+# A newer run of the same branch or pull request cancels this one, which saves compute minutes;
+# the runs of a tag (the release) are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+permissions:
+  contents: read
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+  MAVEN_CLI_OPTS: --batch-mode --errors --no-transfer-progress -Dspotless.apply.skip=true
+  JAVA_VERSION: '25'
+  NODE_VERSION: '24'
+  HELM_VERSION: 4.3.0
+
+jobs:
+  # ---------------------------------------------------------------------------------------------
+  # verify
+  # ---------------------------------------------------------------------------------------------
+
+  release-check:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Check the version and extract the release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          bash distributions/release/check-version.sh "$VERSION"
+          bash distributions/release/release-notes.sh "$VERSION" > release-notes.md
+          test -s release-notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+
+  # The frontend runs first: the kernel packages the UI that it builds. On a workstation a single
+  # ./mvnw verify runs both.
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --prefer-offline
+      - run: npm run check
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend
+          path: |
+            coverage/
+            kernel/src/main/webui/dist/
+            plugins/*/dist/
+          retention-days: 7
+
+  # The documents of every commit (ADR-0023): Word and PDF guides, the compliance workbook, the
+  # release overview and extended notes, zipped with their checksums. The checks that the Markdown
+  # follows the code run in the frontend (docs/test) and backend (DocumentationTest) jobs.
+  # On a tag the release job attaches the bundle.
+  docs:
+    runs-on: ubuntu-latest
+    container: pandoc/extra:3.7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the tools
+        run: |
+          apk add --no-cache python3 py3-openpyxl py3-yaml font-dejavu
+          tlmgr install fvextra || true
+      - name: Build the documents
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/v*) VERSION="${GITHUB_REF_NAME#v}" ;;
+            *) VERSION="$(echo "$GITHUB_SHA" | cut -c1-7)" ;;
+          esac
+          python3 docs/build/build.py --version "$VERSION" --output target/docs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docs
+          path: target/docs/
+          retention-days: 7
+
+  # A pull request that changes the product also updates CHANGELOG.md (label no-changelog to skip;
+  # after adding the label, re-run the job).
+  changelog:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check that CHANGELOG.md is updated
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: bash distributions/release/check-changelog.sh "$BASE_SHA"
+
+  backend:
+    needs: frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend
+      # Testcontainers and Dev Services use the Docker engine of the runner: no Docker-in-Docker.
+      - run: ./mvnw $MAVEN_CLI_OPTS verify -Dskip.npm
+      - name: Test report
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: '**/target/*-reports/TEST-*.xml'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend
+          path: |
+            sdk/java/target/site/jacoco/
+            kernel/target/site/jacoco/
+            kernel/target/jacoco-report/
+            target/dist/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------------------------
+  # quality
+  # ---------------------------------------------------------------------------------------------
+
+  # Runs once the secret SONAR_TOKEN is defined (Settings > Secrets and variables > Actions). The
+  # scanner targets SonarQube Cloud; the variable SONAR_HOST_URL points it to a SonarQube Server
+  # instead. The variables SONAR_ORGANIZATION and SONAR_PROJECT_KEY override the keys of the root
+  # pom.xml. Pull requests from forks get no secrets, so the analysis is skipped there.
+  sonarqube:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST: ${{ vars.SONAR_HOST_URL }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+    steps:
+      - name: Skip without SONAR_TOKEN
+        if: env.SONAR_TOKEN == ''
+        run: echo "::notice::SONAR_TOKEN is not defined, the analysis is skipped."
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          # The analysis needs the whole history to find new code and the branch a pull request
+          # targets.
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - uses: actions/download-artifact@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: frontend
+      - uses: actions/download-artifact@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: backend
+      - uses: actions/cache@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          path: ~/.sonar/cache
+          key: sonar-${{ github.run_id }}
+          restore-keys: sonar-
+      - name: Analysis
+        if: env.SONAR_TOKEN != ''
+        run: |
+          # Vitest writes paths relative to the repository root; the scanner resolves them from each
+          # Maven module, so they are made absolute.
+          sed -i "s#^SF:#SF:$GITHUB_WORKSPACE/#" coverage/lcov.info
+          ./mvnw $MAVEN_CLI_OPTS -DskipTests -Dskip.npm verify \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.qualitygate.wait=true \
+            ${SONAR_HOST:+-Dsonar.host.url=$SONAR_HOST} \
+            ${SONAR_ORGANIZATION:+-Dsonar.organization=$SONAR_ORGANIZATION} \
+            ${SONAR_PROJECT_KEY:+-Dsonar.projectKey=$SONAR_PROJECT_KEY}
+
+  # ---------------------------------------------------------------------------------------------
+  # security
+  # ---------------------------------------------------------------------------------------------
+
+  secrets:
+    runs-on: ubuntu-latest
+    container: zricethezav/gitleaks:v8.30.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history: in a shallow clone the oldest commit looks as if it added every file,
+          # so a finding reviewed in .gitleaksignore would come back under a different commit on
+          # every push.
+          fetch-depth: 0
+      - run: gitleaks detect --source . --no-banner --redact --verbose
+
+  sast:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.175.0
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep
+        run: |
+          # The image expects the code mounted in /src when run with docker run; in CI the code is
+          # in the job directory, so the Docker mode is turned off and the target is given explicitly.
+          unset SEMGREP_IN_DOCKER
+          semgrep scan --config p/java --config p/typescript --config p/owasp-top-ten --error \
+            --metrics off .
+
+  # ---------------------------------------------------------------------------------------------
+  # package
+  # ---------------------------------------------------------------------------------------------
+
+  sbom:
+    needs: backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - run: >-
+          ./mvnw $MAVEN_CLI_OPTS -DskipTests -Dskip.npm package
+          org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: target/sbom.json
+
+  # After sbom: the Java dependencies are read from its CycloneDX file, already resolved with the
+  # Maven cache. Letting Trivy resolve the pom.xml files itself downloads every parent POM from
+  # Maven Central, which rate-limits shared runners (429 Too Many Requests).
+  dependency-scan:
+    needs: sbom
+    runs-on: ubuntu-latest
+    # Pin by digest before production use: Trivy's supply chain was compromised in March 2026.
+    container: aquasec/trivy:0.74.0
+    env:
+      TRIVY_CACHE_DIR: .trivy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: target
+      - uses: actions/cache@v4
+        with:
+          path: .trivy
+          key: trivy-${{ github.run_id }}
+          restore-keys: trivy-
+      - name: Scan
+        run: |
+          # npm dependencies (package-lock.json), secrets and licenses of the sources.
+          trivy fs --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
+            --scanners vuln,secret,license --skip-files '**/pom.xml' --skip-dirs .trivy .
+          # Java dependencies of the kernel and the plugins.
+          trivy sbom --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed target/sbom.json
+
+  container-image:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [backend, release-check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend
+      - id: image
+        name: Image name and timestamp
+        run: |
+          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "epoch=$(git log -1 --format=%ct)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Reproducible: every timestamp in the layers is set to the time of the tagged commit.
+      - id: build
+        uses: docker/build-push-action@v6
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.image.outputs.epoch }}
+        with:
+          context: .
+          file: distributions/docker/Containerfile
+          tags: ${{ steps.image.outputs.name }}:${{ github.ref_name }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          outputs: type=registry,rewrite-timestamp=true
+
+  portable:
+    needs: backend
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == github.event.repository.default_branch)
+    continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux-x64, windows-x64, macos-arm64, macos-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend
+      - uses: actions/cache@v4
+        with:
+          path: target/portable-cache/
+          key: portable-${{ matrix.platform }}-${{ github.run_id }}
+          restore-keys: portable-${{ matrix.platform }}-
+      - name: Build the portable archive
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          distributions/portable/build.sh "$PLATFORM" target/portable
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # The archives take the name of the tag before the checksums are computed, so that the
+            # names in SHA256SUMS match the files attached to the release:
+            # mosaikit-portable-vX.Y.Z-<platform>.
+            VERSION="${GITHUB_REF_NAME#v}"
+            for file in target/portable/mosaikit-portable-*; do
+              base="$(basename "$file")"
+              name="${base/#mosaikit-portable-$VERSION-/mosaikit-portable-$GITHUB_REF_NAME-}"
+              [ "$base" = "$name" ] || mv "$file" "target/portable/$name"
+            done
+          fi
+          (cd target/portable && sha256sum mosaikit-portable-* > "SHA256SUMS-$PLATFORM")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-${{ matrix.platform }}
+          path: |
+            target/portable/mosaikit-portable-*
+            target/portable/SHA256SUMS-*
+          retention-days: 7
+
+  portable-test:
+    needs: portable
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == github.event.repository.default_branch)
+    continue-on-error: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - uses: actions/download-artifact@v4
+        with:
+          name: portable-linux-x64
+          path: target/portable
+      - name: MK-016 acceptance test on the Linux archive, as a user would run it
+        run: |
+          ARCHIVE="$(ls target/portable/mosaikit-portable-*-linux-x64.tar.gz)"
+          ./mvnw $MAVEN_CLI_OPTS -pl kernel -am verify -Dskip.npm \
+            -Dtest=none -Dsurefire.failIfNoSpecifiedTests=false \
+            -Dit.test=PortableDistributionIT -Dfailsafe.failIfNoSpecifiedTests=false \
+            -Dmosaikit.it.portable="$GITHUB_WORKSPACE/$ARCHIVE"
+
+  # ---------------------------------------------------------------------------------------------
+  # release
+  # ---------------------------------------------------------------------------------------------
+
+  # Maven Central (Central Portal). The release profile of the root pom.xml adds what Central
+  # requires (sources, Javadoc, GPG signatures) and the central-publishing-maven-plugin, which
+  # uploads the bundle and waits until it is published. The secrets live in the environment
+  # "release" (or at the organization level, restricted to the repositories that publish).
+  publish-maven:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [backend, release-check]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      # setup-java writes a settings.xml with the server "central" and imports the signing key.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend
+      - name: Deploy kernel-api and the parent POM to Maven Central
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_TOKEN_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_TOKEN_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          # The parent POM is published with kernel-api because plugin builds need it to resolve the
+          # API.
+          ./mvnw $MAVEN_CLI_OPTS -Prelease -DskipTests -Dskip.npm -pl .,sdk/java deploy
+
+  # npmjs.org with trusted publishing (OIDC): no token to keep, and npm attaches the provenance
+  # attestation by itself. On npmjs.com the package declares this repository, the workflow ci.yml
+  # and the environment "release" as its trusted publisher.
+  publish-npm:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [frontend, release-check]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      # No registry-url: setup-node would write a placeholder token that hides the OIDC exchange.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install --global npm@11
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend
+      - run: npm ci --prefer-offline
+      - run: npm run build -w sdk/js -w sdk/create-plugin
+      - name: Publish @mosaikit/sdk and @mosaikit/create-plugin
+        run: |
+          # Pre-releases (v1.2.0-rc.1) are published under the "next" dist-tag, not "latest".
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then TAG=next; else TAG=latest; fi
+          npm publish -w sdk/js -w sdk/create-plugin --tag "$TAG" --access public
+
+  publish-helm:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        run: |
+          # Helm is downloaded at a pinned version and checked against its published checksum.
+          ARCHIVE="helm-v${HELM_VERSION}-linux-amd64.tar.gz"
+          curl --fail --silent --show-error --location --remote-name "https://get.helm.sh/${ARCHIVE}"
+          curl --fail --silent --show-error --location --remote-name "https://get.helm.sh/${ARCHIVE}.sha256sum"
+          sha256sum --check "${ARCHIVE}.sha256sum"
+          tar -xzf "$ARCHIVE" linux-amd64/helm
+      - name: Package and push the chart to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          linux-amd64/helm lint distributions/k8s/mosaikit
+          linux-amd64/helm package distributions/k8s/mosaikit
+          echo "$GITHUB_TOKEN" | linux-amd64/helm registry login ghcr.io \
+            --username "$GITHUB_ACTOR" --password-stdin
+          linux-amd64/helm push "mosaikit-${GITHUB_REF_NAME#v}.tgz" \
+            "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
+
+  # Signatures of the release without keys to keep (NC-22): cosign signs the container image and
+  # the checksums of the archives and documents with the OIDC identity of this workflow (Sigstore
+  # keyless); anyone verifies them with cosign verify / verify-blob, the identity
+  # https://github.com/<owner>/<repo>/.github/workflows/ci.yml@refs/tags/<tag> and the issuer
+  # https://token.actions.githubusercontent.com.
+  sign:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [container-image, portable, docs]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: portable-*
+          path: target/portable
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs
+          path: target/docs
+      - uses: sigstore/cosign-installer@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Sign the image and the checksums
+        env:
+          IMAGE: ${{ needs.container-image.outputs.image }}
+          DIGEST: ${{ needs.container-image.outputs.digest }}
+        run: |
+          # By digest: the signature covers exactly the image that was built.
+          cosign sign --yes "$IMAGE@$DIGEST"
+          mkdir -p target/signatures
+          cat target/portable/SHA256SUMS-* target/docs/SHA256SUMS > target/signatures/SHA256SUMS
+          cosign sign-blob --yes --bundle target/signatures/SHA256SUMS.sigstore.json \
+            target/signatures/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signatures
+          path: target/signatures/
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - release-check
+      - sbom
+      - container-image
+      - portable
+      - portable-test
+      - publish-maven
+      - publish-npm
+      - publish-helm
+      - docs
+      - sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: portable-*
+          path: target/portable
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs
+          path: target/docs
+      - uses: actions/download-artifact@v4
+        with:
+          name: signatures
+          path: target/signatures
+      - uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: target
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ needs.container-image.outputs.image }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          {
+            echo
+            echo "## Packages"
+            echo
+            echo "- Container image: \`$IMAGE:$TAG\`"
+            echo "- Helm chart: \`oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts/mosaikit\`, version ${TAG#v}"
+            echo "- kernel-api and its parent POM: Maven Central, version ${TAG#v}"
+            echo "- @mosaikit/sdk: https://www.npmjs.com/package/@mosaikit/sdk/v/${TAG#v}"
+            echo "- @mosaikit/create-plugin: \`npx @mosaikit/create-plugin@${TAG#v}\`"
+            echo
+            echo "The checksums of the archives and documents are signed with Sigstore. Verify them with:"
+            echo
+            echo '```'
+            echo "cosign verify-blob --bundle SHA256SUMS.sigstore.json \\"
+            echo "  --certificate-identity $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/.github/workflows/ci.yml@refs/tags/$TAG \\"
+            echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS"
+            echo "sha256sum --check --ignore-missing SHA256SUMS"
+            echo '```'
+          } >> release-notes.md
+          cp target/sbom.json "mosaikit-$TAG-sbom.cdx.json"
+          PRERELEASE=()
+          if [[ "$TAG" == *-* ]]; then PRERELEASE=(--prerelease); fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Mosaikit $TAG" --notes-file release-notes.md "${PRERELEASE[@]}" \
+            target/portable/mosaikit-portable-* \
+            target/docs/mosaikit-docs-*.zip \
+            target/signatures/SHA256SUMS \
+            target/signatures/SHA256SUMS.sigstore.json \
+            "mosaikit-$TAG-sbom.cdx.json"

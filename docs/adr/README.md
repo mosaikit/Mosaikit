@@ -28,3 +28,4 @@ by a new record that supersedes the old one, never by editing it.
 | [0021](0021-minimal-marketplace.md) | A minimal marketplace: signed catalogs and installation from the interface | Accepted |
 | [0022](0022-assistant-on-plugin-tools.md) | An assistant on the tools of the plugins, with any OpenAI-compatible model | Accepted |
 | [0023](0023-documentation-and-release-documents.md) | Documentation checked at every push, release documents generated from it | Accepted |
+| [0024](0024-hosting-on-github.md) | Hosting on GitHub: one organization, the core and the plugins in separate repositories | Accepted |
