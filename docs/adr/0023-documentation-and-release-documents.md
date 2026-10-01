@@ -22,7 +22,7 @@ and read without GitLab: Word, PDF, Excel and slides, one set for each release.
     in the index; the tests, requirements and non-conformities named as evidence in the compliance
     documents exist; the changelog has an `Unreleased` section;
   - the requirements tests of ADR-0008 (schema, and a test for every requirement marked done);
-  - on merge requests, the `changelog` job refuses a change of the product without a
+  - on pull requests, the `changelog` job refuses a change of the product without a
     `CHANGELOG.md` entry, unless the label `no-changelog` says users do not see it.
 - **Documents generated, never edited.** `docs/build/build.py` (pandoc, xelatex, openpyxl) builds
   from the Markdown and the YAML, for every commit (job `docs`, artifact for a week) and for every
