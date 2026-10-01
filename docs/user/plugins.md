@@ -46,7 +46,7 @@ with a key it already trusts; the build also leaves the packages in `target/dist
 To publish your own catalog, sign its index with your key:
 
 ```bash
-java -cp bin/kernel/lib/main/dev.mosaikit.mosaikit-kernel-api-*.jar \
+java -cp bin/kernel/lib/main/io.github.mosaikit.mosaikit-kernel-api-*.jar \
   dev.mosaikit.kernel.api.signature.PackageSigningTool index ~/keys/acme /srv/plugins/stable
 ```
 
@@ -85,7 +85,7 @@ To trust a publisher, copy its `.pub.pem` file into `config/trusted-keys/` and r
 a package before installing it:
 
 ```bash
-java -cp bin/kernel/lib/main/dev.mosaikit.mosaikit-kernel-api-*.jar \
+java -cp bin/kernel/lib/main/io.github.mosaikit.mosaikit-kernel-api-*.jar \
   dev.mosaikit.kernel.api.signature.PackageSigningTool verify config/trusted-keys my-plugin-1.0.0.zip
 ```
 

@@ -18,7 +18,8 @@ kernel would follow its release cycle instead of their own.
 - **Hosting.** The project lives in the public GitHub organization `mosaikit`; CI and releases run
   on GitHub Actions (`.github/workflows/ci.yml`).
 - **Publication.** The container image and the Helm chart go to the GitHub Container Registry,
-  `mosaikit-kernel-api` and its parent POM to Maven Central (namespace `dev.mosaikit`),
+  `mosaikit-kernel-api` and its parent POM to Maven Central (namespace
+  `io.github.mosaikit`, ADR-0025),
   `@mosaikit/sdk` and `@mosaikit/create-plugin` to npmjs.org, the portable archives, the documents,
   the SBOM and the signed checksums to the GitHub release. Everything can be read without a token.
 - **Repositories.**
@@ -27,10 +28,12 @@ kernel would follow its release cycle instead of their own.
     kernel use them as the contract of the API.
   - `.github`: the profile and the community files of the organization, and the reusable
     workflows that build, test, sign and release a plugin.
-  - one repository per plugin, created with `@mosaikit/create-plugin`, which depends only on the
-    published API and SDK, calls the reusable workflows and releases on its own cycle.
+  - one repository per plugin, `plugin-<name>`, created with `@mosaikit/create-plugin`, which
+    depends only on the published API and SDK, calls the reusable workflows and releases on its
+    own cycle.
   - `catalog`: the signed catalog of the plugins published by the project (ADR-0021), built from
     their releases and served by GitHub Pages.
+  - `mosaikit.github.io`: the site of the project and its marketplace pages (ADR-0025).
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mosaikit.dev/schemas/plugin-manifest/0.1.json",
+  "$id": "https://mosaikit.github.io/schemas/plugin-manifest/0.1.json",
   "title": "Mosaikit plugin manifest",
   "description": "Declares what a plugin is, what it needs and what it contributes. The kernel applies the same rules in PluginManifests (kernel-api).",
   "type": "object",

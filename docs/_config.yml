@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 Massimo Antonini
+# SPDX-License-Identifier: MPL-2.0
+#
+# Jekyll configuration of the documentation site on GitHub Pages (.github/workflows/docs.yml).
+title: Mosaikit
+description: Documentation of Mosaikit, an extensible framework for developing applications
+theme: jekyll-theme-primer
+exclude:
+  - build
+  - test
+  - '**/test'
+  - '*.py'
