@@ -26,7 +26,8 @@ export function pluginFiles(options: PluginOptions): PluginFiles {
   files.set('manifest.yaml', manifest(options));
   files.set('web/index.js', frontend(options));
   files.set('README.md', readme(options));
-  files.set('.gitignore', 'target/\nlib/\n');
+  files.set('.gitignore', 'target/\nlib/\ndist/\n');
+  files.set('.github/workflows/ci.yml', workflow(options));
   if (options.backend) {
     const path = `src/main/java/${options.names.javaPackage.replaceAll('.', '/')}`;
     files.set('pom.xml', pom(options));
@@ -211,6 +212,37 @@ export default plugin;
 `;
 }
 
+/** The CI of the plugin: the reusable workflow of the Mosaikit organization (ADR-0024). */
+function workflow(options: PluginOptions): string {
+  const version = options.mosaikitVersion;
+  return `${header(options, '#')}#
+# Builds and tests the plugin, installs it into the Mosaikit kernel, and on a tag vX.Y.Z (equal to
+# the version of manifest.yaml) publishes the package in a GitHub release.
+name: Plugin
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  plugin:
+    uses: mosaikit/.github/.github/workflows/plugin.yml@main
+    with:
+      mosaikit-version: '${version}'
+      kernel-images: '["v${version}"]'
+      # To sign releases: the public key in signing/<name>.pub.pem, the private key in the secret
+      # PLUGIN_SIGNING_KEY (PackageSigningTool keygen <directory> <name>).
+      # signing-key-name: <name>
+    secrets: inherit
+`;
+}
+
 function readme(options: PluginOptions): string {
   const { names, backend } = options;
   const build = backend
@@ -249,9 +281,15 @@ ${build}
 2. Start Mosaikit${backend ? ' with its launcher, which builds your Java code into the kernel' : ''}.
 3. Sign in: **${names.name}** is in the menu of apps.
 
-To publish it, sign the zip (\`PackageSigningTool sign\`) and give your public key to the
-administrators, or add it to a catalog of their marketplace. See the plugin development guide of
-Mosaikit.
+## Release
+
+\`.github/workflows/ci.yml\` builds and checks the plugin on GitHub at every push. A tag \`vX.Y.Z\`,
+equal to the version of \`manifest.yaml\`, publishes the package in a GitHub release, signed when
+\`signing-key-name\` is set.
+
+To publish it elsewhere, sign the zip (\`PackageSigningTool sign\`) and give your public key to
+the administrators, or add it to a catalog of their marketplace. See the plugin development guide
+of Mosaikit.
 `;
 }
 

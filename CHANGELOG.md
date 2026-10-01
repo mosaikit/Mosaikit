@@ -12,6 +12,8 @@ project follows [Semantic Versioning](https://semver.org/).
   on GitHub Actions, the plugin API is published to Maven Central and the SDK to npmjs.org, the
   container image and the Helm chart to the GitHub Container Registry; no token is needed to use
   them.
+- `@mosaikit/create-plugin` also writes `.github/workflows/ci.yml`, which builds, checks and
+  releases the plugin with the reusable workflow of the organization.
 - One build for everything (ADR-0012): `./mvnw install` also builds and checks the frontend and
   writes every deliverable to `target/dist` (installation, Docker, Kubernetes, plugin packages,
   and with `-Pportable` the portable archives).
