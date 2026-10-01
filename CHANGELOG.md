@@ -29,6 +29,24 @@ project follows [Semantic Versioning](https://semver.org/).
   Mosaikit configured together, with `mosaikit.identity.keycloak-internal-url` for a kernel that
   reaches Keycloak by another name than the browsers.
 
+### Fixed
+
+- The rebuild of the kernel for Java plugins no longer records the settings of the installation:
+  passwords of `config/application.properties` or of the environment ended up in
+  `bin/kernel/quarkus/generated-bytecode.jar`, and a removed setting kept applying. The next start
+  that rebuilds the kernel removes them; rebuild once (add or remove a Java plugin) to clean an
+  existing installation.
+- A reload of the shell keeps the session of a local account: the shell signs in once and the
+  kernel keeps the session in an HttpOnly cookie, so no script of the page holds the password.
+- The way back to Home from an app or the Plugins page works again.
+- A confirmed action that the plugin refuses is reported in the shell with its reason.
+- The formats `uuid`, `date`, `date-time` and `email` in the input schema of an action are
+  checked, so that an assistant that passes a title as an identifier is told at once.
+- The Plugins page shows a package waiting for the restart as such, instead of offering to install
+  it again.
+- People in no organization are told why the apps have nothing to show.
+- "Cannot reach the model" says where the model was expected instead of "null".
+
 ### Security
 
 - jackson-databind 2.22.3 over the version of the Quarkus BOM, for CVE-2026-91776 and
@@ -39,6 +57,10 @@ project follows [Semantic Versioning](https://semver.org/).
   message, instead of messages posted to the wildcard origin (SonarCloud S2819).
 
 ### Added
+
+- End-to-end tests with Playwright (`e2e/`, `npm run e2e`, job `e2e` of the CI) on a real
+  installation, one per case of the manual test plans of MK-008 and MK-020 to MK-024; releases are
+  published only when they pass.
 
 - Documentation checked at every push and release documents (ADR-0023): `DocumentationTest`
   (API and settings guides follow the code), `docs/test` (links, ADR index, compliance evidence),
