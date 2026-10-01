@@ -31,6 +31,8 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- jackson-databind 2.22.3 over the version of the Quarkus BOM, for CVE-2026-91776 and
+  CVE-2026-91777.
 - Isolated frontends talk with the shell through a `MessageChannel` handed over in the `ready`
   message, instead of messages posted to the wildcard origin (SonarCloud S2819).
 
