@@ -37,7 +37,7 @@ more thing to pay for and keep running.
 - **Plugin repositories** are named after the main kind of the plugin: `app-<name>`,
   `ext-<name>`, `service-<name>`, `theme-<name>`, `locale-<name>`, `auth-<name>` (`app-maps`,
   id `dev.mosaikit.maps`). For the kernel they are all plugins; the kind is in the manifest, the
-  name only helps people find them. The apps ported from Geoportal (`app-catalog`, `app-maps`,
+  name only helps people find them. The apps ported from Geoportal (`app-data`, `app-maps`,
   `app-dashboards`, `app-processes`) are plugins of the project like any other: the kernel stays
   agnostic of their domain.
 
