@@ -110,6 +110,17 @@ curl -u admin -X PUT localhost:8080/api/v1/organizations/<slug>/identity \
 - Every test class carries the requirement it verifies: `@Tag("MK-003")` in Java,
   the requirement id in the `describe` title or file in TypeScript when relevant.
 
+## End-to-end tests
+
+[`e2e/`](../../e2e/README.md) runs Playwright on a real installation built by `./mvnw install`:
+launcher, kernel, shell and plugins, in Chromium, with a fake language model only. Every
+requirement has its e2e cases there, one per acceptance criterion; a requirement is done when they
+pass in CI (job `e2e`), not only its unit tests.
+
+```bash
+./mvnw install -DskipTests && npm run e2e
+```
+
 ## CI
 
 The workflow (`.github/workflows/ci.yml`) runs on the GitHub-hosted runners, on pull requests, on

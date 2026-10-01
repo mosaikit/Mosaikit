@@ -163,6 +163,56 @@ jobs:
             target/dist/
           retention-days: 7
 
+  # End-to-end tests (e2e/): the installation built by the backend job, started by its launcher on
+  # PostgreSQL 18, driven in Chromium by Playwright. Only the language model is a fake. A
+  # requirement is done when its e2e cases pass here, not only its unit tests.
+  e2e:
+    needs: backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: mosaikit
+          POSTGRES_PASSWORD: mosaikit
+          POSTGRES_DB: mosaikit
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U mosaikit" --health-interval 5s --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: backend
+      - run: npm ci --prefer-offline
+      # The generator and the plugin API, for the tests of the devkit (MK-023).
+      - run: npm run build -w sdk/create-plugin
+      - run: ./mvnw $MAVEN_CLI_OPTS -pl sdk/java -am install -DskipTests -Dskip.npm
+      - run: npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: npm run e2e
+        env:
+          E2E_DB_URL: jdbc:postgresql://localhost:5432/mosaikit
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: e2e
+          path: |
+            e2e/report/
+            e2e/.work/results/
+            e2e/.work/installation.log
+          retention-days: 7
+
   # ---------------------------------------------------------------------------------------------
   # quality
   # ---------------------------------------------------------------------------------------------
@@ -306,7 +356,7 @@ jobs:
 
   container-image:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [backend, release-check]
+    needs: [backend, e2e, release-check]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -429,7 +479,7 @@ jobs:
   # "release" (or at the organization level, restricted to the repositories that publish).
   publish-maven:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [backend, release-check]
+    needs: [backend, e2e, release-check]
     runs-on: ubuntu-latest
     environment: release
     steps:
@@ -463,7 +513,7 @@ jobs:
   # and the environment "release" as its trusted publisher.
   publish-npm:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [frontend, release-check]
+    needs: [frontend, e2e, release-check]
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -491,7 +541,7 @@ jobs:
 
   publish-helm:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: release-check
+    needs: [e2e, release-check]
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -18,15 +18,17 @@
   "scripts": {
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p docs/requirements && tsc -p docs/test && tsc -p sdk/java",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p docs/requirements && tsc -p docs/test && tsc -p sdk/java && tsc -p e2e",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "build": "npm run build --workspaces --if-present",
     "check": "npm run lint && npm run typecheck && npm run test:coverage",
-    "verify": "npm run check && npm run build"
+    "verify": "npm run check && npm run build",
+    "e2e": "playwright test -c e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.0",
     "@vitest/coverage-v8": "^5.0.2",
     "ajv": "^8.20.0",

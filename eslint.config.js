@@ -6,7 +6,15 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/target/**', 'docs/**/*.md', '**/coverage/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/target/**',
+      'docs/**/*.md',
+      '**/coverage/**',
+      'e2e/.work/**',
+      'e2e/report/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -38,7 +46,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js', 'vitest.config.ts', '**/vite.config.ts'],
+    files: ['eslint.config.js', 'vitest.config.ts', '**/vite.config.ts', 'e2e/**/*.ts'],
     languageOptions: { globals: { ...globals.node } },
   },
 );
