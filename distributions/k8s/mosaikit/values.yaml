@@ -1,5 +1,5 @@
 image:
-  repository: registry.gitlab.com/mosaikit/mosaikit
+  repository: ghcr.io/mosaikit/mosaikit
   tag: ""          # defaults to the chart appVersion
   pullPolicy: IfNotPresent
 

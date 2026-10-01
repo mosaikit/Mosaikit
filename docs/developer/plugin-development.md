@@ -151,7 +151,7 @@ In a container image, add Java plugins by building a derived image, so that the 
 once, at image build time:
 
 ```dockerfile
-FROM registry.gitlab.com/mosaikit/mosaikit:0.2.0
+FROM ghcr.io/mosaikit/mosaikit:0.2.0
 COPY --chown=185 my-plugin-1.0.0.zip /opt/mosaikit/plugins/
 RUN /opt/mosaikit/mosaikit build
 ```

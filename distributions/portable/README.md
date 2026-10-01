@@ -25,4 +25,4 @@ starts with the previous plugins.
 | `plugins/` | installed plugins |
 | `bin/` | the kernel, the Java runtime, PostgreSQL and their licenses |
 
-More: <https://gitlab.com/mosaikit/mosaikit>
+More: <https://github.com/mosaikit/mosaikit>

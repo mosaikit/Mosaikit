@@ -9,7 +9,7 @@
 # Plugins with Java code are added by building a derived image, so that the kernel is rebuilt at
 # image build time and the container can run with a read-only root filesystem:
 #
-#   FROM registry.gitlab.com/mosaikit/mosaikit:<version>
+#   FROM ghcr.io/mosaikit/mosaikit:<version>
 #   COPY --chown=185 my-plugin-1.0.0.zip /opt/mosaikit/plugins/
 #   RUN /opt/mosaikit/mosaikit build
 

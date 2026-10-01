@@ -18,7 +18,7 @@ The released chart is also in the Helm registry of the project (`docs/developer/
 repository). Plugins with Java code are added by building a derived image:
 
 ```dockerfile
-FROM registry.gitlab.com/mosaikit/mosaikit:<version>
+FROM ghcr.io/mosaikit/mosaikit:<version>
 COPY --chown=185 my-plugin-1.0.0.zip /opt/mosaikit/plugins/
 RUN /opt/mosaikit/mosaikit build
 ```

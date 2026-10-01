@@ -15,7 +15,7 @@ artefacts of the pipeline of the release tag.
 | Software bill of materials | `sbom` | artefact `target/sbom.json` (CycloneDX) |
 | Vulnerabilities of the components | `dependency-scan` | log of `dependency-scan` (Trivy on the sources and on the SBOM) |
 | Portable distribution tested on its archive | `portable-test` | log and JUnit report of `PortableDistributionIT` |
-| Release notes | `release-check`, `release` | `release-notes.md`, the GitLab release |
+| Release notes | `release-check`, `release` | `release-notes.md`, the GitHub release |
 
 Download them from the pipeline page (*Download artifacts*) or with the API:
 `GET /projects/:id/jobs/:job_id/artifacts`. Job artefacts expire after one week; the pipeline of a

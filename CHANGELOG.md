@@ -8,6 +8,10 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The project moved to the public GitHub organization `mosaikit` (ADR-0024): CI and releases run
+  on GitHub Actions, the plugin API is published to Maven Central and the SDK to npmjs.org, the
+  container image and the Helm chart to the GitHub Container Registry; no token is needed to use
+  them.
 - One build for everything (ADR-0012): `./mvnw install` also builds and checks the frontend and
   writes every deliverable to `target/dist` (installation, Docker, Kubernetes, plugin packages,
   and with `-Pportable` the portable archives).
@@ -112,10 +116,10 @@ project follows [Semantic Versioning](https://semver.org/).
 - Portable distribution (MK-016): archives for Windows, Linux and macOS with a Java runtime
   built with jlink and PostgreSQL 18 started by the launcher on localhost, secrets generated at
   first start, backup by copying `data/`; built and tested in the `portable` CI jobs and
-  attached to GitLab releases.
+  attached to GitHub releases.
 - Installation layout shared by all distributions, with `distributions/installation/assemble.sh`.
 - The kernel serves the built UI from the `ui/` directory; Quinoa is used in development mode only.
 - Requirements as code, architecture decision records, CI pipeline, container image and
   Helm chart.
 - Release pipeline: on a `vX.Y.Z` tag, container image, kernel-api, `@mosaikit/sdk` and the
-  Helm chart are published to the GitLab registries and a GitLab release is created.
+  Helm chart are published (container image and chart to GHCR, plugin API to Maven Central, SDK to npmjs.org) and a GitHub release is created.

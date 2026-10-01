@@ -3,6 +3,11 @@
   "version": "0.1.0-SNAPSHOT",
   "description": "Mosaikit SDK for plugin frontends: the contract between the shell and a plugin.",
   "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mosaikit/mosaikit.git",
+    "directory": "sdk/js"
+  },
   "author": "Massimo Antonini",
   "type": "module",
   "exports": {

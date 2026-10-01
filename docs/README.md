@@ -1,6 +1,6 @@
 # Mosaikit documentation
 
-Markdown files versioned with the code (ADR-0008), readable on GitLab, checked at every push and
+Markdown files versioned with the code (ADR-0008), readable on GitHub, checked at every push and
 published with each release as Word, PDF, Excel and PowerPoint documents generated from them
 (`docs/build`, ADR-0023).
 

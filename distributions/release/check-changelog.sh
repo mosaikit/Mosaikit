@@ -10,7 +10,7 @@ set -euo pipefail
 
 base="${1:?usage: $0 <base commit>}"
 cd "$(dirname "$0")/../.."
-if [[ ",${CI_MERGE_REQUEST_LABELS:-}," == *",no-changelog,"* ]]; then
+if [[ ",${PR_LABELS:-}," == *",no-changelog,"* ]]; then
   echo "Label no-changelog: not checked."
   exit 0
 fi
