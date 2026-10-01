@@ -307,7 +307,7 @@ public class Marketplace {
         }
     }
 
-    private static void deleteFile(Path path) {
+    static void deleteFile(Path path) {
         try {
             Files.delete(path);
         } catch (IOException e) {

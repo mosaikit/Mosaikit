@@ -114,6 +114,12 @@ class AssistantTest {
         return message;
     }
 
+    private static JsonNode toolCall(String id, String name, JsonNode arguments) {
+        ObjectNode message = (ObjectNode) toolCall(id, name, "");
+        ((ObjectNode) message.path("tool_calls").get(0).path("function")).set("arguments", arguments);
+        return message;
+    }
+
     private static JsonNode text(String content) {
         return JSON.createObjectNode().put("role", "assistant").put("content", content);
     }
@@ -151,6 +157,26 @@ class AssistantTest {
     }
 
     @Test
+    void acceptsArgumentsAsAnObjectOrAsAnEmptyString() {
+        model.script(request -> {
+            int tools = request.path("messages").findValues("tool_call_id").size();
+            return switch (tools) {
+                case 0 -> toolCall("c1", "roads__list-roads", "");
+                case 1 ->
+                    toolCall("c2", "roads__close-road", JSON.createObjectNode().put("road", "A2"));
+                default -> text("Fatto.");
+            };
+        });
+
+        member().body(Map.of("messages", List.of(Map.of("role", "user", "content", "Chiudi la A2"))))
+                .post("/api/v1/ai/assistant/replies")
+                .then()
+                .statusCode(200)
+                .body("tools.outcome", equalTo(List.of("executed", "drafted")))
+                .body("drafts[0].tool", equalTo("roads__close-road"));
+    }
+
+    @Test
     void tellsTheModelWhenAToolFailsAndStopsAfterTheLastRound() {
         model.script(request -> toolCall("c", "roads__unknown", "not json"));
 
@@ -174,6 +200,21 @@ class AssistantTest {
                 .then()
                 .statusCode(400)
                 .body("errors.field", hasItem("messages[0].role"));
+        member().body("{\"messages\":[null]}")
+                .post("/api/v1/ai/assistant/replies")
+                .then()
+                .statusCode(400)
+                .body("errors.field", hasItem("messages[0].role"));
+        member().body(Map.of("messages", List.of(Map.of("role", "user"), Map.of("role", "user", "content", " "))))
+                .post("/api/v1/ai/assistant/replies")
+                .then()
+                .statusCode(400)
+                .body("errors.field", equalTo(List.of("messages[0].content", "messages[1].content")));
+        member().body(Map.of("messages", List.of(Map.of("role", "user", "content", "x".repeat(8_001)))))
+                .post("/api/v1/ai/assistant/replies")
+                .then()
+                .statusCode(400)
+                .body("errors.message", hasItem(containsString("at most 8000 characters")));
         member().body(Map.of(
                         "messages",
                         List.of(

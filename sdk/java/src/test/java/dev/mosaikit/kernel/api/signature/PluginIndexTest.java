@@ -88,6 +88,10 @@ class PluginIndexTest {
                 new String(signature, UTF_8).replace("Ed25519", "RSA").getBytes(UTF_8);
         assertThatThrownBy(() -> PluginIndex.verify(index, otherAlgorithm, trusted))
                 .hasMessageContaining("Unsupported");
+        byte[] malformed = "algorithm=\\uZZZZ\n".getBytes(UTF_8);
+        assertThatThrownBy(() -> PluginIndex.verify(index, malformed, trusted))
+                .isInstanceOf(PackageSignatureException.class)
+                .hasMessageContaining("Unreadable");
     }
 
     @Test

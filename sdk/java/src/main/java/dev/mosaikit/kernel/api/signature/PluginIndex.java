@@ -135,7 +135,8 @@ public final class PluginIndex {
         Properties properties = new Properties();
         try {
             properties.load(new StringReader(new String(signature, StandardCharsets.ISO_8859_1)));
-        } catch (IOException _) {
+        } catch (IOException | IllegalArgumentException _) {
+            // Properties refuses a malformed unicode escape with IllegalArgumentException.
             throw new PackageSignatureException("Unreadable signature of the index");
         }
         if (!SigningKeys.ALGORITHM.equals(properties.getProperty(ALGORITHM_PROPERTY))) {
