@@ -393,6 +393,18 @@ export class MkShell extends LitElement {
     }
   };
 
+  private renderAdminLink(): unknown {
+    if (!this.isPlatformAdmin()) {
+      return nothing;
+    }
+    return html`<a
+      href=${ADMIN_PLUGINS}
+      aria-current=${this.path === ADMIN_PLUGINS ? 'page' : 'false'}
+      @click=${this.navigate}
+      >Plugins</a
+    >`;
+  }
+
   private renderWorkspace(): unknown {
     const failed = this.loadResults.filter((result) => !result.loaded);
     const failures =
@@ -412,16 +424,7 @@ export class MkShell extends LitElement {
                 >${entry.title}</a
               >`,
           )}
-          ${
-            this.isPlatformAdmin()
-              ? html`<a
-                  href=${ADMIN_PLUGINS}
-                  aria-current=${this.path === ADMIN_PLUGINS ? 'page' : 'false'}
-                  @click=${this.navigate}
-                  >Plugins</a
-                >`
-              : nothing
-          }
+          ${this.renderAdminLink()}
         </nav>
         <main id="app-area">
           ${

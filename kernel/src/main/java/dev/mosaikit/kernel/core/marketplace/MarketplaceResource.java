@@ -60,7 +60,7 @@ public class MarketplaceResource {
             description = "The package is placed in the plugins directory and used at the next start.")
     public Response install(@Valid @NotNull InstallationRequest request) {
         Installation installation = marketplace.install(request.source(), request.id(), request.version());
-        record(installation, Map.of("source", request.source()));
+        auditInstallation(installation, request.source());
         return Response.accepted(installation).build();
     }
 
@@ -72,11 +72,11 @@ public class MarketplaceResource {
             description = "For installations without network: the package must be signed by a trusted publisher.")
     public Response upload(byte[] body) {
         Installation installation = marketplace.upload(body);
-        record(installation, Map.of("source", "upload"));
+        auditInstallation(installation, "upload");
         return Response.accepted(installation).build();
     }
 
-    private void record(Installation installation, Map<String, String> detail) {
+    private void auditInstallation(Installation installation, String source) {
         audit.append(
                 identity.getPrincipal().getName(),
                 Optional.empty(),
@@ -84,7 +84,7 @@ public class MarketplaceResource {
                 installation.id() + " " + installation.version(),
                 AuditEvent.Outcome.SUCCEEDED,
                 Map.of(
-                        "source", detail.get("source"),
+                        "source", source,
                         "file", installation.file(),
                         "publisherKey", installation.publisherKey(),
                         "replaced", String.valueOf(installation.replaced())));

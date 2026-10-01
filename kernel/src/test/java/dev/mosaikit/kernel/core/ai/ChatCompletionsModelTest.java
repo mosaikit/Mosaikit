@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -78,18 +79,19 @@ class ChatCompletionsModelTest {
     @Test
     void reportsErrorsOfTheModel() {
         ChatCompletionsModel model = model(Optional.empty());
+        ObjectNode request = json.createObjectNode();
         status = 500;
         answer = "overloaded";
-        assertThatThrownBy(() -> model.complete(json.createObjectNode()))
+        assertThatThrownBy(() -> model.complete(request))
                 .isInstanceOf(UncheckedIOException.class)
                 .hasMessageContaining("500");
         status = 200;
         answer = "{\"choices\":[]}";
-        assertThatThrownBy(() -> model.complete(json.createObjectNode())).hasMessageContaining("without a message");
+        assertThatThrownBy(() -> model.complete(request)).hasMessageContaining("without a message");
         answer = "not json";
-        assertThatThrownBy(() -> model.complete(json.createObjectNode())).isInstanceOf(UncheckedIOException.class);
+        assertThatThrownBy(() -> model.complete(request)).isInstanceOf(UncheckedIOException.class);
         server.stop(0);
-        assertThatThrownBy(() -> model.complete(json.createObjectNode())).hasMessageContaining("Cannot reach");
+        assertThatThrownBy(() -> model.complete(request)).hasMessageContaining("Cannot reach");
     }
 
     @Test
@@ -97,7 +99,9 @@ class ChatCompletionsModelTest {
         ChatCompletionsModel none =
                 new ChatCompletionsModel(json, Optional.empty(), "llama3.1", Optional.empty(), Duration.ofSeconds(1));
 
+        ObjectNode request = json.createObjectNode();
+
         assertThat(none.model()).isEmpty();
-        assertThatThrownBy(() -> none.complete(json.createObjectNode())).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> none.complete(request)).isInstanceOf(IllegalStateException.class);
     }
 }

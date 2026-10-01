@@ -33,6 +33,8 @@ project follows [Semantic Versioning](https://semver.org/).
 
 - jackson-databind 2.22.3 over the version of the Quarkus BOM, for CVE-2026-91776 and
   CVE-2026-91777.
+- The marketplace inspects a package in a temporary directory that only the user of the kernel
+  can read, where the file system has POSIX permissions (SonarQube Cloud S5443).
 - Isolated frontends talk with the shell through a `MessageChannel` handed over in the `ready`
   message, instead of messages posted to the wildcard origin (SonarCloud S2819).
 
