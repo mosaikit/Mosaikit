@@ -4,6 +4,9 @@ package dev.mosaikit.kernel.api.plugin;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -12,14 +15,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.regex.Pattern;
 
 /**
  * The JSON Schema of the input of an action (MK-015), limited to the keywords that describe plain
  * data: {@code type}, {@code properties}, {@code required}, {@code additionalProperties} (true or
  * false), {@code items}, {@code enum}, {@code minLength}, {@code maxLength}, {@code minimum},
- * {@code maximum}, {@code minItems}, {@code maxItems}, and the annotations {@code title}, {@code
- * description}, {@code default}, {@code format} and {@code examples}. Other keywords are refused
- * in the manifest, so that a schema never promises a check that is not made.
+ * {@code maximum}, {@code minItems}, {@code maxItems}, {@code format}, and the annotations {@code
+ * title}, {@code description}, {@code default} and {@code examples}. Other keywords are refused in
+ * the manifest, so that a schema never promises a check that is not made.
+ *
+ * <p>The formats {@code uuid}, {@code date}, {@code date-time} and {@code email} of a string are
+ * checked, so that an assistant that passes a title where an identifier is expected is told at once,
+ * instead of drafting an action that fails when it is confirmed; other formats stay annotations.
  */
 public final class InputSchema {
 
@@ -38,6 +46,10 @@ public final class InputSchema {
     private static final String MAXIMUM = "maximum";
     private static final String MIN_ITEMS = "minItems";
     private static final String MAX_ITEMS = "maxItems";
+    private static final String FORMAT = "format";
+    private static final Pattern UUID =
+            Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+    private static final Pattern EMAIL = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     private static final Set<String> TYPES = Set.of(OBJECT, ARRAY, "string", INTEGER, "number", "boolean", "null");
     private static final Set<String> KEYWORDS = Set.of(
@@ -56,7 +68,7 @@ public final class InputSchema {
             "title",
             "description",
             "default",
-            "format",
+            FORMAT,
             "examples",
             "$schema");
     private static final List<String> BOUNDS = List.of(MIN_LENGTH, MAX_LENGTH, MIN_ITEMS, MAX_ITEMS, MINIMUM, MAXIMUM);
@@ -121,6 +133,7 @@ public final class InputSchema {
         requireKind(schema, REQUIRED, List.class, field, "must be a list of property names", violation);
         requireKind(schema, ADDITIONAL_PROPERTIES, Boolean.class, field, "must be true or false", violation);
         requireKind(schema, ENUM, List.class, field, "must be a list", violation);
+        requireKind(schema, FORMAT, String.class, field, "must be a string", violation);
         for (String bound : BOUNDS) {
             requireKind(schema, bound, Number.class, field, "must be a number", violation);
         }
@@ -186,6 +199,9 @@ public final class InputSchema {
             case String text -> {
                 bound(schema, MIN_LENGTH, text.length(), path, "characters", problems, true);
                 bound(schema, MAX_LENGTH, text.length(), path, "characters", problems, false);
+                if (schema.get(FORMAT) instanceof String format && !hasFormat(text, format)) {
+                    problems.add(path + " must be a valid " + format);
+                }
             }
             case Boolean _ -> {
                 // Nothing more to check.
@@ -253,6 +269,26 @@ public final class InputSchema {
             if (broken) {
                 problems.add(path + " must have " + (min ? "at least " : "at most ") + limit.intValue() + " " + unit);
             }
+        }
+    }
+
+    /** Whether a string has a checked format; formats that are not checked always match. */
+    static boolean hasFormat(String text, String format) {
+        return switch (format) {
+            case "uuid" -> UUID.matcher(text).matches();
+            case "email" -> EMAIL.matcher(text).matches();
+            case "date" -> parses(() -> LocalDate.parse(text));
+            case "date-time" -> parses(() -> OffsetDateTime.parse(text));
+            default -> true;
+        };
+    }
+
+    private static boolean parses(Runnable parse) {
+        try {
+            parse.run();
+            return true;
+        } catch (DateTimeParseException e) {
+            return false;
         }
     }
 

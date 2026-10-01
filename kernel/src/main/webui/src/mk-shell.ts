@@ -126,6 +126,14 @@ export class MkShell extends LitElement {
     .muted {
       color: var(--mk-muted);
     }
+    main > .error,
+    .notice {
+      margin: 0 0 16px;
+      padding: 10px 14px;
+      border: 1px solid var(--mk-line);
+      border-radius: var(--mk-radius);
+      background: var(--mk-surface);
+    }
     .organization {
       display: flex;
       align-items: center;
@@ -194,7 +202,22 @@ export class MkShell extends LitElement {
         this.error = 'The kernel is not reachable.';
       },
     );
-    void this.completeFederatedSignIn();
+    void this.completeFederatedSignIn().then(() => this.resumeSession());
+  }
+
+  /** After a reload, enters again with the session of a local account, when there is one. */
+  private async resumeSession(): Promise<void> {
+    if (this.account || this.session) {
+      return;
+    }
+    try {
+      const account = await this.client.resumeSession();
+      if (account) {
+        await this.enter(account);
+      }
+    } catch {
+      // No session: the sign-in form stays.
+    }
   }
 
   override disconnectedCallback(): void {
@@ -340,8 +363,7 @@ export class MkShell extends LitElement {
     try {
       if (confirm) {
         const invocation = await this.client.confirmDraft(draft.id);
-        const status = invocation.result?.status ?? 0;
-        this.error = status >= 400 ? `${draft.title} failed (HTTP ${String(status)}).` : undefined;
+        this.error = failureOf(draft.title, invocation.result);
       } else {
         await this.client.rejectDraft(draft.id);
       }
@@ -427,6 +449,7 @@ export class MkShell extends LitElement {
           ${this.renderAdminLink()}
         </nav>
         <main id="app-area">
+          ${this.renderOrganizationNotice()}
           ${
             entryForPath(this.entries, this.path) || this.showsAdmin()
               ? nothing
@@ -434,6 +457,7 @@ export class MkShell extends LitElement {
                   <h1>Welcome, ${this.account?.displayName}</h1>
                   <p class="muted">${this.entries.length} apps available. ${failures}</p>`
           }
+          <div id="app-host"></div>
         </main>
       </div>
     `;
@@ -564,7 +588,7 @@ export class MkShell extends LitElement {
     clearInterval(this.draftTimer);
     this.drafts = [];
     this.session = undefined;
-    this.client.signOut();
+    void this.client.signOut();
     this.account = undefined;
     this.entries = [];
     this.loadResults = [];
@@ -577,9 +601,31 @@ export class MkShell extends LitElement {
     event.preventDefault();
     history.pushState(null, '', link.pathname);
     this.path = link.pathname;
+    this.error = undefined;
   };
 
-  /** Renders the custom element of the current app, created by its plugin. */
+  /**
+   * What went wrong in the workspace, such as an action that failed once confirmed, and a notice for
+   * people who are in no organization: apps act on the data of one, so they would show nothing.
+   */
+  private renderOrganizationNotice(): unknown {
+    const error = this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing;
+    // The Plugins page does not act on an organization.
+    if (!this.account || this.account.organizationId || this.showsAdmin()) {
+      return error;
+    }
+    return html`${error}
+      <p class="notice">
+        You are not working in an organization: the apps act on the data of an organization, so they
+        have nothing to show.
+        ${
+          this.isPlatformAdmin()
+            ? 'Add yourself to an organization to use them.'
+            : 'Ask an administrator to add you to one.'
+        }
+      </p>`;
+  }
+
   private isPlatformAdmin(): boolean {
     return this.account?.roles.includes('platform-admin') === true;
   }
@@ -588,8 +634,16 @@ export class MkShell extends LitElement {
     return this.path === ADMIN_PLUGINS && this.isPlatformAdmin();
   }
 
+  /**
+   * Mounts the current app, or the Plugins page, in an element of its own: Lit renders the rest of
+   * the work area, and replacing children that Lit placed breaks its next render (back to Home).
+   */
   private renderApp(): void {
-    const area = this.renderRoot.querySelector('#app-area');
+    const area = this.renderRoot.querySelector('#app-host');
+    if (area && !this.showsAdmin() && !entryForPath(this.entries, this.path)) {
+      area.replaceChildren();
+      return;
+    }
     if (area && this.showsAdmin()) {
       if (area.firstElementChild?.localName !== 'mk-admin-plugins') {
         const admin = document.createElement('mk-admin-plugins');
@@ -622,6 +676,26 @@ export class MkShell extends LitElement {
       area.replaceChildren(document.createElement(entry.element));
     }
   }
+}
+
+/**
+ * The message for a confirmed action that the plugin refused, with the detail of its problem
+ * (RFC 9457) when there is one, or `undefined` when it succeeded.
+ */
+export function failureOf(
+  title: string,
+  result: { status: number; body?: unknown } | undefined,
+): string | undefined {
+  const status = result?.status ?? 0;
+  if (status < 400) {
+    return undefined;
+  }
+  const body = result?.body;
+  const detail =
+    typeof body === 'object' && body !== null && 'detail' in body && typeof body.detail === 'string'
+      ? body.detail
+      : `HTTP ${String(status)}`;
+  return `${title} failed: ${detail}. Nothing was changed.`;
 }
 
 /** Where the realm sends the person back: the root of the site, registered in its client. */

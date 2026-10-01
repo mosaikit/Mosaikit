@@ -76,6 +76,49 @@ class InputSchemaTest {
     }
 
     @Test
+    void checksTheFormatsOfStrings() {
+        InputSchema schema = schema(Map.of(
+                "type",
+                "object",
+                "properties",
+                Map.of(
+                        "id", Map.of("type", "string", "format", "uuid"),
+                        "day", Map.of("type", "string", "format", "date"),
+                        "at", Map.of("type", "string", "format", "date-time"),
+                        "mail", Map.of("type", "string", "format", "email"),
+                        "colour", Map.of("type", "string", "format", "hex-colour"))));
+
+        assertThat(schema.validate(input(
+                        "id", "43e1ce31-06c5-4af3-99b4-422c903595c5",
+                        "day", "2026-10-01",
+                        "at", "2026-10-01T16:05:03Z",
+                        "mail", "mario.rossi@comune.test",
+                        "colour", "anything, not checked")))
+                .isEmpty();
+        // An assistant that passes the title of an activity where its id is expected.
+        assertThat(schema.validate(input(
+                        "id", "Riparare il lampione 3491",
+                        "day", "1 ottobre",
+                        "at", "2026-10-01",
+                        "mail", "mario.rossi")))
+                .containsExactlyInAnyOrder(
+                        "input.id must be a valid uuid",
+                        "input.day must be a valid date",
+                        "input.at must be a valid date-time",
+                        "input.mail must be a valid email");
+    }
+
+    @Test
+    void refusesAFormatThatIsNotAString() {
+        List<String> problems = new ArrayList<>();
+        InputSchema.parse(
+                Map.of("type", "object", "properties", Map.of("id", Map.of("type", "string", "format", 1))),
+                "input",
+                (field, message) -> problems.add(field + " " + message));
+        assertThat(problems).containsExactly("input.properties.id.format must be a string");
+    }
+
+    @Test
     void reportsEveryProblemOfAnInput() {
         InputSchema schema = schema(NOTE);
 

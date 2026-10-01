@@ -16,13 +16,20 @@ import java.util.UUID;
  * @param organizationId the organization the tool acts on
  * @param organizationSlug slug of that organization, sent to the plugin
  * @param authorization the {@code Authorization} header of the request, if it had one
+ * @param session the session cookie of the shell ({@code mosaikit-session}), when the request
+ *     came from the shell without an {@code Authorization} header
  */
-public record Caller(String username, UUID organizationId, String organizationSlug, String authorization) {
+public record Caller(
+        String username, UUID organizationId, String organizationSlug, String authorization, String session) {
 
     public Caller {
         Objects.requireNonNull(username, "username");
         Objects.requireNonNull(organizationId, "organizationId");
         Objects.requireNonNull(organizationSlug, "organizationSlug");
+    }
+
+    public Caller(String username, UUID organizationId, String organizationSlug, String authorization) {
+        this(username, organizationId, organizationSlug, authorization, null);
     }
 
     /**
@@ -31,10 +38,17 @@ public record Caller(String username, UUID organizationId, String organizationSl
      * @throws NoOrganizationException when the request has no organization
      */
     public static Caller of(SecurityIdentity identity, CurrentOrganization organization, String authorization) {
+        return of(identity, organization, authorization, null);
+    }
+
+    /** The person of a request of the shell, which may carry its session cookie instead. */
+    public static Caller of(
+            SecurityIdentity identity, CurrentOrganization organization, String authorization, String session) {
         return new Caller(
                 identity.getPrincipal().getName(),
                 organization.require(),
                 organization.slug().orElseThrow(NoOrganizationException::new),
-                authorization);
+                authorization,
+                session);
     }
 }

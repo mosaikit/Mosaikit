@@ -32,6 +32,7 @@ class HttpActionInvokerTest {
     private record Received(String method, String target, String authorization, String organization, String body) {}
 
     private final List<Received> received = new CopyOnWriteArrayList<>();
+    private final List<String> cookies = new CopyOnWriteArrayList<>();
     private HttpServer server;
     private HttpActionInvoker invoker;
 
@@ -55,6 +56,7 @@ class HttpActionInvokerTest {
     }
 
     private void answer(HttpExchange exchange, int status, String type, String body) throws IOException {
+        cookies.add(String.valueOf(exchange.getRequestHeaders().getFirst("Cookie")));
         received.add(new Received(
                 exchange.getRequestMethod(),
                 exchange.getRequestURI().toString(),
@@ -80,6 +82,16 @@ class HttpActionInvokerTest {
         assertThat(received)
                 .singleElement()
                 .isEqualTo(new Received("POST", "/api/v1/p/notes/json", "Basic YWRh", "acme", "{\"text\":\"hi\"}"));
+    }
+
+    @Test
+    void sendsTheSessionOfTheShellWhenTheRequestHadNoAuthorization() {
+        Caller shell = new Caller("ada@example.org", UUID.randomUUID(), "acme", null, "s3ss10n");
+
+        invoker.invoke(new PluginCall("POST", "/api/v1/p/notes/json", List.of(), Map.of("text", "hi")), shell);
+
+        assertThat(received).singleElement().extracting(Received::authorization).isNull();
+        assertThat(cookies).containsExactly("mosaikit-session=s3ss10n");
     }
 
     @Test

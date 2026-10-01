@@ -24,6 +24,13 @@ sub-domain, or the only organization of the person that accepts passwords. Reque
 APIs without an organization answer `403`. `GET /api/v1/accounts/me` gives the organization of the
 request and every membership of the person.
 
+The shell signs a local account in once, with a form posted to `/api/v1/accounts/session` (fields
+`username` and `password`; 200, or 401), which the form authentication of Quarkus answers: the
+kernel keeps the session in an encrypted, HttpOnly, SameSite=Strict cookie, `mosaikit-session`, so
+that a reload keeps it and no script of the page holds the password. Requests marked `X-Mosaikit-Client: shell` get a 401 without
+`WWW-Authenticate`, so that the browser never opens its own sign-in dialog. Other clients keep using
+HTTP Basic or bearer tokens.
+
 ## Endpoints of the kernel
 
 | Method and path | Who | Purpose |
@@ -32,6 +39,8 @@ request and every membership of the person.
 | `GET /api/v1/identity/sign-in-options` | anyone | how a person signs in |
 | `POST /api/v1/accounts/registrations` | anyone, when the organization allows it | self-registration |
 | `GET /api/v1/accounts/me` | signed in | the current account |
+| `GET /api/v1/accounts/session` | anyone | the account of the session of the shell, or 204 without one |
+| `DELETE /api/v1/accounts/session` | anyone | end the session of the shell |
 | `GET /api/v1/shell/plugins` | signed in | frontends of the active plugins, for the shell |
 | `GET /api/v1/plugin-assets/{id}/{path}` | anyone | web files of active plugins |
 | `GET /api/v1/plugins` | `platform-admin` | every plugin found, with status, problems and publisher |

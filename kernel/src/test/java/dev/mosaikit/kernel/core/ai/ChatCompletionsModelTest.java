@@ -91,7 +91,10 @@ class ChatCompletionsModelTest {
         answer = "not json";
         assertThatThrownBy(() -> model.complete(request)).isInstanceOf(UncheckedIOException.class);
         server.stop(0);
-        assertThatThrownBy(() -> model.complete(request)).hasMessageContaining("Cannot reach");
+        // A refused connection says where the model was expected, never "null".
+        assertThatThrownBy(() -> model.complete(request))
+                .hasMessageContaining("Cannot reach the model: ")
+                .hasMessageNotContaining("null");
     }
 
     @Test

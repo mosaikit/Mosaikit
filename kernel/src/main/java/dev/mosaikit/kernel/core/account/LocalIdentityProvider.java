@@ -66,6 +66,14 @@ public class LocalIdentityProvider implements IdentityProvider<UsernamePasswordA
         if (!passwordHasher.verify(password, hash.get())) {
             throw new AuthenticationFailedException();
         }
+        return identityOf(found, requested, host);
+    }
+
+    /**
+     * The identity of a local account, with its roles in the organization the request acts on;
+     * shared with {@link SessionIdentityProvider}, so that a session has the same rights as Basic.
+     */
+    SecurityIdentity identityOf(UserAccount found, String requested, String host) {
         var builder = QuarkusSecurityIdentity.builder()
                 .setPrincipal(new QuarkusPrincipal(found.getUsername()))
                 .addRoles(found.getRoles());

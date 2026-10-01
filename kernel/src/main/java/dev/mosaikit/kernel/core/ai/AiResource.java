@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: MPL-2.0
 package dev.mosaikit.kernel.core.ai;
 
+import dev.mosaikit.kernel.core.account.SessionResource;
 import dev.mosaikit.kernel.core.identity.RequestOrganization;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.CookieParam;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
@@ -65,8 +67,11 @@ public class AiResource {
     @Operation(
             summary = "Ask the assistant",
             description = "It answers the last message with the tools of the plugins; changes become drafts.")
-    public Assistant.Reply ask(@HeaderParam(HttpHeaders.AUTHORIZATION) String authorization, ChatRequest request) {
-        return assistant.answer(request == null ? List.of() : request.messages(), caller(authorization));
+    public Assistant.Reply ask(
+            @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization,
+            @CookieParam(SessionResource.COOKIE) String session,
+            ChatRequest request) {
+        return assistant.answer(request == null ? List.of() : request.messages(), caller(authorization, session));
     }
 
     @GET
@@ -85,8 +90,9 @@ public class AiResource {
     public Response invoke(
             @PathParam("tool") String tool,
             @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization,
+            @CookieParam(SessionResource.COOKIE) String session,
             Object input) {
-        Invocation invocation = actions.invoke(tool, input, caller(authorization));
+        Invocation invocation = actions.invoke(tool, input, caller(authorization, session));
         return Response.status(invocation.isDrafted() ? Response.Status.ACCEPTED : Response.Status.OK)
                 .entity(invocation)
                 .build();
@@ -96,31 +102,38 @@ public class AiResource {
     @Path("/drafts")
     @Operation(summary = "List the drafts that the person can still confirm")
     public List<DraftView> drafts() {
-        return actions.openDrafts(caller(null));
+        return actions.openDrafts(caller(null, null));
     }
 
     @GET
     @Path("/drafts/{id}")
     @Operation(summary = "Get a draft of the person")
     public DraftView draft(@PathParam("id") UUID id) {
-        return actions.draft(id, caller(null));
+        return actions.draft(id, caller(null, null));
     }
 
     @POST
     @Path("/drafts/{id}/confirmation")
     @Operation(summary = "Confirm a draft, which runs it")
-    public Invocation confirm(@PathParam("id") UUID id, @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization) {
-        return actions.confirm(id, caller(authorization));
+    public Invocation confirm(
+            @PathParam("id") UUID id,
+            @HeaderParam(HttpHeaders.AUTHORIZATION) String authorization,
+            @CookieParam(SessionResource.COOKIE) String session) {
+        return actions.confirm(id, caller(authorization, session));
     }
 
     @DELETE
     @Path("/drafts/{id}")
     @Operation(summary = "Reject a draft, which discards it")
     public DraftView reject(@PathParam("id") UUID id) {
-        return actions.reject(id, caller(null));
+        return actions.reject(id, caller(null, null));
     }
 
-    private Caller caller(String authorization) {
-        return Caller.of(identity, organization, authorization);
+    /**
+     * The person, with the credentials that the call to the plugin carries: the {@code
+     * Authorization} header, or the session cookie of the shell.
+     */
+    private Caller caller(String authorization, String session) {
+        return Caller.of(identity, organization, authorization, authorization == null ? session : null);
     }
 }

@@ -4,6 +4,7 @@ package dev.mosaikit.kernel.core.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.mosaikit.kernel.core.account.SessionResource;
 import dev.mosaikit.kernel.core.identity.OrganizationAccess;
 import io.quarkus.runtime.LaunchMode;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -68,6 +69,8 @@ public class HttpActionInvoker implements ActionInvoker {
                 .header(OrganizationAccess.HEADER, caller.organizationSlug());
         if (caller.authorization() != null) {
             request.header("Authorization", caller.authorization());
+        } else if (caller.session() != null) {
+            request.header("Cookie", SessionResource.COOKIE + "=" + caller.session());
         }
         if (call.body() == null) {
             request.method(call.method(), HttpRequest.BodyPublishers.noBody());

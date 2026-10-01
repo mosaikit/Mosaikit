@@ -202,23 +202,39 @@ public final class Launcher {
 
     /** Runs the Quarkus re-augmentation of the mutable JAR, which exits once the kernel is rebuilt. */
     static int reaugment(Installation installation) {
-        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
         try {
-            return new ProcessBuilder(
-                            java,
-                            "-Dquarkus.launch.rebuild=true",
-                            "-jar",
-                            installation.kernelJar().toString())
-                    .directory(installation.home().toFile())
-                    .inheritIO()
-                    .start()
-                    .waitFor();
+            return rebuildProcess(installation).inheritIO().start().waitFor();
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot run the rebuild", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while rebuilding the kernel", e);
         }
+    }
+
+    /**
+     * The re-augmentation, without the settings of the installation: Quarkus records every value it
+     * sees while building as a default of the rebuilt kernel, so a password in {@code
+     * config/application.properties} or in the environment would end up in its JARs, and a setting
+     * removed later would still apply. The rebuild therefore runs in the kernel directory, where there
+     * is no {@code config/}, and without the {@code QUARKUS_*} and {@code MOSAIKIT_*} variables; the
+     * kernel reads the settings when it starts.
+     */
+    static ProcessBuilder rebuildProcess(Installation installation) {
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        var builder = new ProcessBuilder(
+                        java,
+                        "-Dquarkus.launch.rebuild=true",
+                        "-jar",
+                        installation.kernelJar().toString())
+                .directory(installation.kernel().toFile());
+        builder.environment().keySet().removeIf(Launcher::isSetting);
+        return builder;
+    }
+
+    private static boolean isSetting(String variable) {
+        String name = variable.toUpperCase(Locale.ROOT);
+        return name.startsWith("QUARKUS_") || name.startsWith("MOSAIKIT_");
     }
 
     /**
