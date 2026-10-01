@@ -8,6 +8,11 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The Maven coordinates are `io.github.mosaikit` (`io.github.mosaikit:mosaikit-kernel-api`) and
+  `io.github.mosaikit.samples`, the namespace that Maven Central verifies with the GitHub
+  organization (ADR-0025); the Java packages and the plugin identifiers do not change.
+- The documentation is published on GitHub Pages at <https://mosaikit.github.io/mosaikit/>; the
+  `$id` of the JSON schemas is under <https://mosaikit.github.io/schemas/>.
 - The project moved to the public GitHub organization `mosaikit` (ADR-0024): CI and releases run
   on GitHub Actions, the plugin API is published to Maven Central and the SDK to npmjs.org, the
   container image and the Helm chart to the GitHub Container Registry; no token is needed to use

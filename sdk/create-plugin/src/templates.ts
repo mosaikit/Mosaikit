@@ -7,7 +7,7 @@ export interface PluginOptions {
   readonly names: PluginNames;
   /** Adds Java code, a database schema under row-level security and actions for assistants. */
   readonly backend: boolean;
-  /** Version of the Mosaikit plugin API (`dev.mosaikit:mosaikit-kernel-api`). */
+  /** Version of the Mosaikit plugin API (`io.github.mosaikit:mosaikit-kernel-api`). */
   readonly mosaikitVersion: string;
   /** Version of Quarkus of that Mosaikit version. */
   readonly quarkusVersion: string;
@@ -252,7 +252,7 @@ function readme(options: PluginOptions): string {
 mvn package        # needs JDK 25 and Maven; writes lib/${names.slug}.jar and target/${names.slug}-0.1.0.zip
 \`\`\`
 
-The Java code compiles against \`dev.mosaikit:mosaikit-kernel-api\` and the Quarkus extensions of
+The Java code compiles against \`io.github.mosaikit:mosaikit-kernel-api\` and the Quarkus extensions of
 the kernel, with scope \`provided\`: the package contains only your classes. Every table of
 \`db/\` holds data of organizations under row-level security; keep it that way.
 `
@@ -296,7 +296,7 @@ of Mosaikit.
 function pom(options: PluginOptions): string {
   const { names } = options;
   const provided = [
-    ['dev.mosaikit', 'mosaikit-kernel-api', '${mosaikit.version}'],
+    ['io.github.mosaikit', 'mosaikit-kernel-api', '${mosaikit.version}'],
     ['io.quarkus', 'quarkus-rest-jackson'],
     ['io.quarkus', 'quarkus-hibernate-orm'],
     ['io.quarkus', 'quarkus-hibernate-validator'],

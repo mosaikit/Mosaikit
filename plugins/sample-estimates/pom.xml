@@ -9,13 +9,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>dev.mosaikit</groupId>
+        <groupId>io.github.mosaikit</groupId>
         <artifactId>mosaikit-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <groupId>dev.mosaikit.samples</groupId>
+    <groupId>io.github.mosaikit.samples</groupId>
     <artifactId>mosaikit-sample-estimates</artifactId>
     <name>Mosaikit :: Samples :: Estimates</name>
     <description>Sample extension plugin: adds a field, a widget and an event to the Activities app (MK-020).</description>
@@ -37,7 +37,7 @@
     -->
     <dependencies>
         <dependency>
-            <groupId>dev.mosaikit</groupId>
+            <groupId>io.github.mosaikit</groupId>
             <artifactId>mosaikit-kernel-api</artifactId>
             <scope>provided</scope>
         </dependency>

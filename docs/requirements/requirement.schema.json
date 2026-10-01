@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://mosaikit.dev/schemas/requirement/0.1.json",
+  "$id": "https://mosaikit.github.io/schemas/requirement/0.1.json",
   "title": "Mosaikit requirement",
   "type": "object",
   "required": ["id", "title", "area", "priority", "status", "description", "acceptance"],

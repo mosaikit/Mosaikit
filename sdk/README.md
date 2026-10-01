@@ -4,7 +4,7 @@ Everything a third party needs to write a Mosaikit plugin, and nothing of the ke
 
 | Part | Artifact | For |
 |---|---|---|
-| `java/` | `dev.mosaikit:mosaikit-kernel-api` (Maven) | the Java code of a plugin: manifest model, versions, service interfaces. It depends on the JDK only |
+| `java/` | `io.github.mosaikit:mosaikit-kernel-api` (Maven) | the Java code of a plugin: manifest model, versions, service interfaces. It depends on the JDK only |
 | `java/src/main/resources/.../plugin-manifest.schema.json` | in the same JAR | the JSON Schema of `manifest.yaml`, for editors and CI |
 | `js/` | `@mosaikit/sdk` (npm) | the frontend of a plugin: the context the shell passes to `activate(context)`, the event bus, the types of contributions |
 

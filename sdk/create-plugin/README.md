@@ -14,6 +14,6 @@ npx @mosaikit/create-plugin dev.acme.traffic --name "Traffic" --backend
 | `--backend` | add Java code, schema and actions |
 | `--directory` | where to create it (default: the last part of the identifier) |
 | `--author` | for the licence headers |
-| `--mosaikit` | version of `dev.mosaikit:mosaikit-kernel-api` to compile against |
+| `--mosaikit` | version of `io.github.mosaikit:mosaikit-kernel-api` to compile against |
 
 See the [plugin development guide](../../docs/developer/plugin-development.md).

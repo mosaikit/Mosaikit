@@ -93,12 +93,12 @@ sha256sum --check --ignore-missing SHA256SUMS
 
 ## Consuming the published artifacts
 
-Maven: `dev.mosaikit:mosaikit-kernel-api` is on Maven Central, so a plugin needs no repository
+Maven: `io.github.mosaikit:mosaikit-kernel-api` is on Maven Central, so a plugin needs no repository
 configuration:
 
 ```xml
 <dependency>
-    <groupId>dev.mosaikit</groupId>
+    <groupId>io.github.mosaikit</groupId>
     <artifactId>mosaikit-kernel-api</artifactId>
     <version>0.2.0</version>
     <scope>provided</scope>

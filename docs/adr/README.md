@@ -29,3 +29,4 @@ by a new record that supersedes the old one, never by editing it.
 | [0022](0022-assistant-on-plugin-tools.md) | An assistant on the tools of the plugins, with any OpenAI-compatible model | Accepted |
 | [0023](0023-documentation-and-release-documents.md) | Documentation checked at every push, release documents generated from it | Accepted |
 | [0024](0024-hosting-on-github.md) | Hosting on GitHub: one organization, the core and the plugins in separate repositories | Accepted |
+| [0025](0025-github-pages-and-maven-namespace.md) | Publishing on GitHub Pages, and the Maven namespace `io.github.mosaikit` | Accepted |
