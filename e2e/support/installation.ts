@@ -59,6 +59,8 @@ export function prepare(): void {
   mkdirSync(WORK, { recursive: true });
   cpSync(join(DIST, 'mosaikit'), INSTALLATION, { recursive: true });
   cpSync(join(DIST, 'plugins'), CATALOG, { recursive: true });
+  // Artifacts of the CI keep no empty directory: the installation has no plugins yet.
+  mkdirSync(join(INSTALLATION, 'plugins'), { recursive: true });
   if (!WINDOWS) {
     chmodSync(join(INSTALLATION, 'mosaikit'), 0o755);
   }

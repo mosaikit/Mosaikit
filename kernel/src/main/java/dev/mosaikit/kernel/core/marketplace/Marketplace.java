@@ -158,7 +158,8 @@ public class Marketplace {
     private Installation place(byte[] bytes, Optional<PluginIndex.Entry> expected) {
         Path work = null;
         try {
-            work = Files.createTempDirectory(registry.directory(), INSTALLING);
+            // An installation may have lost its empty plugins directory (an archive, a copy).
+            work = Files.createTempDirectory(Files.createDirectories(registry.directory()), INSTALLING);
             Path candidate = Files.write(work.resolve("candidate.zip"), bytes);
             PackageTrust trust = registry.trust();
             String keyId = verified(candidate, trust);
