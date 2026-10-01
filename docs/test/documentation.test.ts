@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -66,7 +66,7 @@ describe('documentation', () => {
       .join('\n');
     const tests = new Set(
       [...files(root, '.java'), ...files(root, '.ts')].map((file) =>
-        file.slice(file.lastIndexOf('/') + 1).replace(/\.(java|ts)$/, ''),
+        basename(file).replace(/\.(java|ts)$/, ''),
       ),
     );
     const requirements = new Set(
