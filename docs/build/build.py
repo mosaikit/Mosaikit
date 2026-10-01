@@ -39,7 +39,7 @@ GUIDES = {
     "User-Guide": ("User and administrator guide", "user",
                    ["README", "installation", "using", "administration", "plugins", "configuration", "operations"]),
     "Developer-Guide": ("Developer guide", "developer",
-                        ["README", "architecture", "development", "plugin-development", "api", "versions", "release"]),
+                        ["README", "architecture", "development", "plugin-development", "api", "versions", "release", "roadmap"]),
     "Compliance": ("Compliance: AgID, ACN QC2 and GDPR", "compliance",
                    ["README", "matrix", "non-conformities", "evidence", "secure-development"]),
 }
