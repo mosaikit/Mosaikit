@@ -8,6 +8,7 @@ Checked on 29 September 2026. Renovate proposes updates; changing a major versio
 | Maven | 3.9.12 through Maven Wrapper 3.3.4 |
 | Quarkus | 3.39.x, then 3.40 LTS, then Quarkus 4 (kernel code avoids Panache, the Vert.x event bus and framework types in `kernel-api`) |
 | Hibernate ORM / Jakarta Data | 7.4 / 1.0 (from the Quarkus BOM) |
+| Jackson | 2.22.3, over the 2.22.2 of the Quarkus BOM for CVE-2026-91776 and CVE-2026-91777 |
 | PostgreSQL | 18 |
 | Keycloak | 26.7 (federation, next iteration) |
 | Node.js | 24 LTS, 26 LTS from 28 October 2026 |
