@@ -30,5 +30,10 @@ by a new record that supersedes the old one, never by editing it.
 | [0023](0023-documentation-and-release-documents.md) | Documentation checked at every push, release documents generated from it | Accepted |
 | [0024](0024-hosting-on-github.md) | Hosting on GitHub: one organization, the core and the plugins in separate repositories | Accepted |
 | [0025](0025-github-pages-and-maven-namespace.md) | Publishing on GitHub Pages, and the Maven namespace `io.github.mosaikit` | Accepted |
+| [0026](0026-teams-like-shell.md) | A shell that works like Microsoft Teams, on Fluent UI Web Components | Accepted |
+| [0027](0027-teams-channels-and-chat.md) | Teams, channels and chats: groups in the kernel, collaboration in plugins | Accepted |
+| [0028](0028-real-time-activity-and-notifications.md) | Real time, presence, activity and notifications in the kernel | Accepted |
+| [0029](0029-files-on-s3-and-connectors.md) | Files on S3-compatible storage, and connectors to external services | Accepted |
+| [0030](0030-global-search-with-pills.md) | Global search with pills, on PostgreSQL full-text and providers of the plugins | Accepted |
 | [0031](0031-frontend-plugins-on-the-data-api.md) | Frontend plugins on a data API of the kernel, active without a restart | Accepted |
 | [0032](0032-fluent-ui-and-themes.md) | Fluent UI web components behind `@mosaikit/ui`, with selectable themes | Accepted |
