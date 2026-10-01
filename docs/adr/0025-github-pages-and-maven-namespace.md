@@ -25,7 +25,7 @@ more thing to pay for and keep running.
   public repositories:
   - `mosaikit.github.io` at `https://mosaikit.github.io/`: the site of the project; at `/catalog/`
     the signed catalog of ADR-0021, built from the releases of the plugins listed in its
-    `catalog/catalog.yml` and a source for `mosaikit.marketplace.sources`; at `/marketplace/` a
+    `catalog/catalog.yml` and a source for `mosaikit.marketplace.sources`; at `/plugins/` a
     page that lists the plugins of the catalog; at `/schemas/` the JSON schemas
     (`plugin-manifest/0.1.json`, `requirement/0.1.json`, the `$id` of the schemas);
   - `mosaikit` at `https://mosaikit.github.io/mosaikit/`: `docs/` of the default branch, rendered
