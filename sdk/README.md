@@ -8,8 +8,8 @@ Everything a third party needs to write a Mosaikit plugin, and nothing of the ke
 | `java/src/main/resources/.../plugin-manifest.schema.json` | in the same JAR | the JSON Schema of `manifest.yaml`, for editors and CI |
 | `js/` | `@mosaikit/sdk` (npm) | the frontend of a plugin: the context the shell passes to `activate(context)`, the event bus, the types of contributions |
 
-Both are published with each release: the Maven artifact in the Maven registry of the project,
-the npm package in its npm registry ([docs/developer/release.md](../docs/developer/release.md)).
+Both are published with each release: the Maven artifact to Maven Central (`io.github.mosaikit`),
+the npm package to npmjs.org ([docs/developer/release.md](../docs/developer/release.md)).
 
 ## A plugin in short
 

@@ -3,7 +3,8 @@
 - Status: accepted
 - Date: 2026-10-01
 - Deciders: Massimo Antonini
-- Refines [ADR-0024](0024-hosting-on-github.md)
+- Refines [ADR-0024](0024-hosting-on-github.md) and [ADR-0008](0008-requirements-and-documentation-as-code.md)
+  (documentation site)
 
 ## Context and problem statement
 
@@ -44,8 +45,9 @@ more thing to pay for and keep running.
 
 - Nothing to register or host: the addresses follow the organization. A domain can be added later
   with a `CNAME` file in each repository, without changing the structure.
-- The documentation on the site is the one of the default branch; the documents of a release
-  (Word, PDF, Excel, PowerPoint) stay attached to the GitHub release.
+- The documentation site uses Jekyll, which GitHub Pages runs without a build of ours, instead of
+  the Docusaurus of ADR-0008. The documentation on the site is the one of the default branch; the
+  documents of a release (Word, PDF, Excel, PowerPoint) stay attached to the GitHub release.
 - Pages of the free plan serve only public repositories: what must stay private (the plugins under
   development) is not on the site until it is released into the catalog. A catalog that reads
   private releases needs a token (`CATALOG_TOKEN`).

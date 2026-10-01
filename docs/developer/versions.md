@@ -17,4 +17,4 @@ Checked on 29 September 2026. Renovate proposes updates; changing a major versio
 | JUnit / AssertJ / ArchUnit | 6 (from the Quarkus BOM) / 3.27 / 1.5 (`archunit-junit6`) |
 | SonarQube | SonarQube Cloud (Free plan); SonarQube Server 2026.5 LTA, Developer edition or higher, if self-hosted |
 | Helm | 4.3 |
-| Container base | Eclipse Temurin 25 JRE on UBI 9 minimal (UBI 10 when runtime images are confirmed) |
+| Container base | Eclipse Temurin 25 JRE on Ubuntu Noble (`eclipse-temurin:25-jre-noble`); UBI 10 minimal when runtime images are confirmed |
