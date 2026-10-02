@@ -69,6 +69,8 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- When the apps cannot be loaded after signing in, the person enters and the workspace says that
+  the apps could not be loaded, instead of a failed sign-in ("The request failed.").
 - `npm run dev` builds the plugin API at every start: after a `git pull` the dev mode ran the new
   kernel on the old classes of `sdk/java/target` and failed with `NoSuchMethodError`.
 - The rebuild of the kernel for Java plugins no longer records the settings of the installation:
