@@ -60,9 +60,10 @@ test.describe('MK-021 Plugin frontends written with any framework', () => {
 
       expect(dark.react).not.toBe(bright.react);
       expect(dark.vue).not.toBe(bright.vue);
-      expect(dark.subtitle).toContain('it-IT');
+      // The language of the shell, chosen from the browser before any setting (MK-027).
+      expect(dark.subtitle).toContain(', it:');
       expect(dark.subtitle).toMatch(/lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica/);
-      expect(bright.subtitle).toContain('en-GB');
+      expect(bright.subtitle).toContain(', en:');
     });
   });
 });
