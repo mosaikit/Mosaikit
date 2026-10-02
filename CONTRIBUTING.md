@@ -27,7 +27,8 @@ Thank you for considering a contribution. This document describes how the projec
    ./mvnw verify -Dskip.npm -DskipITs
    npm run e2e        # when the change touches what people see or do
    ```
-6. Open a pull request; it is merged with rebase once the CI is green. Changes to `kernel-api`
+6. Open a pull request with auto-merge (`gh pr merge --auto --rebase`): GitHub merges it with
+   rebase once the required checks pass. Changes to `kernel-api`
    (including the manifest schema) or `sdk/` require a review.
 7. A feature is done when its end-to-end tests pass in `e2e/`, not only its unit tests.
 

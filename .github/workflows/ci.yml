@@ -70,8 +70,33 @@ jobs:
           name: release-notes
           path: release-notes.md
 
-  # The frontend runs first: the kernel packages the UI that it builds. On a workstation a single
-  # ./mvnw verify runs both.
+  # Whether a pull request changes more than the documentation: one that changes only docs/ and the
+  # Markdown files at the root skips the build of the kernel and the end-to-end tests (a skipped
+  # job counts as passed for the required checks). Pushes and the nightly lane always run them.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          code=true
+          if [[ "$EVENT" == pull_request ]]; then
+            changed="$(git diff --name-only "$BASE_SHA"...HEAD)"
+            if ! grep -qvE '^(docs/|[^/]+\.md$|LICENSE$)' <<<"$changed"; then
+              code=false
+            fi
+          fi
+          echo "code=$code" | tee -a "$GITHUB_OUTPUT"
+
+  # Lint, type check and unit tests of the frontend. The backend and the end-to-end tests build the
+  # UI themselves, so the three jobs run at the same time.
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -136,7 +161,7 @@ jobs:
         run: bash distributions/release/check-changelog.sh "$BASE_SHA"
 
   backend:
-    needs: frontend
+    needs: changes
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -154,16 +179,19 @@ jobs:
           cache: npm
       # The tests start PostgreSQL from node_modules (EmbeddedPostgres): no Docker for them.
       - run: npm ci --prefer-offline
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: frontend
+      # The UI that the kernel packages (the frontend job checks it at the same time).
+      - run: npm run build
       # Pull requests run the fast lane: the installation tests (MK-011, minutes each) and the tests
-      # with Keycloak (in Docker) run on main, every night and on tags.
+      # with Keycloak (in Docker) run on main, every night and on tags. A pull request of
+      # documentation only runs the test that the documentation follows the code.
       - name: Tests
         env:
           SLOW: ${{ github.event_name != 'pull_request' }}
+          CODE: ${{ needs.changes.outputs.code }}
         run: |
-          if [[ "$SLOW" == true ]]; then
+          if [[ "$CODE" != true ]]; then
+            ./mvnw $MAVEN_CLI_OPTS -pl kernel -am test -Dskip.npm -Dtest=DocumentationTest -Dsurefire.failIfNoSpecifiedTests=false
+          elif [[ "$SLOW" == true ]]; then
             ./mvnw $MAVEN_CLI_OPTS verify -Dskip.npm -Dtest.groups.excluded=
           else
             ./mvnw $MAVEN_CLI_OPTS verify -Dskip.npm -DskipITs
@@ -183,11 +211,13 @@ jobs:
             target/dist/
           retention-days: 7
 
-  # End-to-end tests (e2e/): the installation built by the backend job, started by its launcher on
-  # a PostgreSQL 18 of its own, driven in Chromium by Playwright. Only the language model is a fake. A
-  # requirement is done when its e2e cases pass here, not only its unit tests.
+  # End-to-end tests (e2e/): an installation built here, at the same time as the backend job runs
+  # the unit tests, started by its launcher on a PostgreSQL 18 of its own, driven in Chromium by
+  # Playwright. Only the language model is a fake. A requirement is done when its e2e cases pass
+  # here, not only its unit tests.
   e2e:
-    needs: backend
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -200,13 +230,15 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: backend
       - run: npm ci --prefer-offline
-      # The generator and the plugin API, for the tests of the devkit (MK-023).
-      - run: npm run build -w sdk/create-plugin
-      - run: ./mvnw $MAVEN_CLI_OPTS -pl sdk/java -am install -DskipTests -Dskip.npm
+      # The UI, the SDK and the generator of plugins (for the tests of the devkit, MK-023).
+      - run: npm run build
+      # The installation and the catalog in target/dist, and the plugin API in the local repository.
+      - run: ./mvnw $MAVEN_CLI_OPTS -T 1C install -DskipTests -Dskip.npm
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
       # The suite starts its own PostgreSQL, from node_modules.
       - name: End-to-end tests

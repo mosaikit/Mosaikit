@@ -144,8 +144,12 @@ running one.
 
 | Lane | When | What |
 |---|---|---|
-| Fast | pull requests | frontend checks, unit and Quarkus tests (`-DskipITs`, without Keycloak), end-to-end tests, secrets, SAST |
+| Fast | pull requests, about 4 minutes | frontend checks, unit and Quarkus tests (`-DskipITs`, without Keycloak) and end-to-end tests at the same time, secrets, SAST; a pull request of documentation only (`docs/`, Markdown files at the root) runs the frontend checks and `DocumentationTest`, in about a minute |
 | Full | `main`, every night at 02:17 UTC, tags, by hand | everything above, plus the installation tests, the tests with Keycloak, SonarQube, SBOM, dependency scan and the release documents; the portable archives on tags or by hand |
+
+`frontend`, `backend` and `e2e` are required checks of `main`, and pull requests are opened with
+auto-merge (`gh pr merge --auto --rebase`): GitHub merges them when the checks pass, so nobody
+waits for the CI.
 
 The code is analysed on SonarQube Cloud (organization `mosaikit`, project `mosaikit_mosaikit`):
 the `sonarqube` job runs when the repository secret `SONAR_TOKEN` is defined, with Automatic Analysis
