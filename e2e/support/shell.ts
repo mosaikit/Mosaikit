@@ -19,7 +19,8 @@ export async function signIn(page: Page, person: Person = ADMIN): Promise<void> 
   await expect(page.getByRole('heading', { name: /^(Welcome|Benvenuto)/ })).toBeVisible();
 }
 
-export const apps = (page: Page): Locator => page.getByRole('navigation', { name: 'Apps' });
+/** The app bar, called Apps, or App in Italian (MK-027). */
+export const apps = (page: Page): Locator => page.getByRole('navigation', { name: /^(Apps|App)$/ });
 
 /** Signs out from the menu of the person, in the top bar (MK-025). */
 export async function signOut(page: Page): Promise<void> {
