@@ -42,8 +42,11 @@ frontend:
   bridge:
     services: [api]
 contributes:
-  launcher.app:
+  # The app bar of the shell (MK-025).
+  rail.app:
     - id: notes
       title: Notes
       route: /app/notes
       element: mk-sample-notes
+      icon: web/icon.svg
+      order: 30

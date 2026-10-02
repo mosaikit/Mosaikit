@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 class PluginResourceTest {
 
     @Test
+    @Tag("MK-025")
     void listsInstalledPluginsWithTheirStatus() {
         asAdmin()
                 .get("/api/v1/plugins")
@@ -26,7 +27,12 @@ class PluginResourceTest {
                 .body("$", hasSize(4))
                 .body("find { it.id == 'dev.mosaikit.test.hello' }.status", equalTo("ACTIVE"))
                 .body("find { it.id == 'dev.mosaikit.test.schema' }.status", equalTo("ACTIVE"))
-                .body("find { it.id == 'dev.mosaikit.test.future' }.status", equalTo("INCOMPATIBLE"));
+                .body("find { it.id == 'dev.mosaikit.test.future' }.status", equalTo("INCOMPATIBLE"))
+                // The test plugin hello still contributes to launcher.app (MK-025).
+                .body(
+                        "find { it.id == 'dev.mosaikit.test.hello' }.warnings[0]",
+                        containsString("launcher.app is deprecated"))
+                .body("find { it.id == 'dev.mosaikit.test.schema' }.warnings", hasSize(0));
     }
 
     @Test

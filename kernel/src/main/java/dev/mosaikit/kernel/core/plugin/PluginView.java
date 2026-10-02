@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
  *
  * @param publisherKey identifier of the trusted key that signed the package, {@code null} when the
  *     publisher is not verified (MK-013)
+ * @param warnings what still works but should change, such as a deprecated extension point
  */
 public record PluginView(
         String id,
@@ -24,7 +25,14 @@ public record PluginView(
         String platform,
         PluginStatus status,
         List<String> problems,
-        String publisherKey) {
+        String publisherKey,
+        List<String> warnings) {
+
+    /** The extension point that rail.app replaces (ADR-0026). */
+    static final String LAUNCHER_POINT = "launcher.app";
+
+    static final String LAUNCHER_DEPRECATED =
+            "launcher.app is deprecated: contribute the app to rail.app (ADR-0026); the shell still shows it";
 
     static PluginView of(InstalledPlugin plugin) {
         return plugin.manifest()
@@ -38,7 +46,8 @@ public record PluginView(
                         null,
                         plugin.status(),
                         plugin.problems(),
-                        null));
+                        null,
+                        List.of()));
     }
 
     private static PluginView fromManifest(PluginManifest manifest, InstalledPlugin plugin) {
@@ -51,6 +60,7 @@ public record PluginView(
                 manifest.platform().toString(),
                 plugin.status(),
                 plugin.problems(),
-                plugin.publisherKey().orElse(null));
+                plugin.publisherKey().orElse(null),
+                manifest.contributionsTo(LAUNCHER_POINT).isEmpty() ? List.of() : List.of(LAUNCHER_DEPRECATED));
     }
 }

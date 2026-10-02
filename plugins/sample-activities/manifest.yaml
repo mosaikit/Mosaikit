@@ -61,8 +61,11 @@ actions:
       method: POST
       path: activities/{id}/completion
 contributes:
-  launcher.app:
+  # The app bar of the shell (MK-025).
+  rail.app:
     - id: activities
       title: Activities
       route: /app/activities
       element: mk-sample-activities
+      icon: web/icon.svg
+      order: 20

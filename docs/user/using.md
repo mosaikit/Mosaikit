@@ -11,26 +11,37 @@ organization you belong to and on the plugins your administrator installed.
    - if it signs in through its own identity provider (Keycloak), you are sent to its sign-in
      page, and come back signed in; the first time, you may be asked to change a temporary
      password;
-   - otherwise you enter your Mosaikit password.
-3. To sign out, use *Sign out* in the top bar; with an identity provider you are signed out there
-   too.
+   - otherwise you enter your Mosaikit password. Tick **Remember me** to stay signed in on that
+     browser for 30 days, also after closing it, until you sign out.
+3. To sign out, open the menu of your avatar, on the right of the top bar, and choose **Sign out**;
+   with an identity provider you are signed out there too.
 
-If your organization allows self-registration, an account is created with an email address, a
-display name and a password of at least 12 characters (`POST /api/v1/accounts/registrations`; the
-sign-in page does not offer it yet).
+If your organization allows self-registration, choose **Create an account** on the sign-in page:
+enter your name, your email address and a password of at least 12 characters. Mosaikit sends you a
+mail with a link: open it to confirm your address, then sign in. The link works once, for 24 hours;
+**Send the link again** sends a new one.
 
 ## Several organizations
 
-If you belong to several organizations, the top bar shows the organization you are working in;
-choose another one there. Organizations that accept only their identity provider are shown but
+If you belong to several organizations, the menu of your avatar shows the organization you are
+working in; choose another one there. Organizations that accept only their identity provider are shown but
 cannot be chosen after signing in with a password: sign in to them through their identity
 provider instead.
 
-## The launcher and the apps
+## The app bar and the apps
 
-After signing in you see the launcher: one tile per app you can use. Choosing an app opens it in
-the main area; its address (for example `/app/notes`) can be bookmarked and reloaded. Apps can
-talk to each other: an action in one app can update another one.
+The screen has three parts, as in the collaboration suites people already know:
+
+- the **app bar** on the left, with **Home**, one icon per app you can use and, for platform
+  administrators, **Plugins** and **Settings** at the bottom; on a phone it is at the bottom of the
+  screen;
+- the **top bar**, with the search of apps and pages (type a part of the name, then Enter) and the
+  menu of your avatar;
+- the **work area**, where the chosen app opens. Its address (for example `/app/notes`) can be
+  bookmarked and reloaded.
+
+Home greets you and lists your apps. Apps can talk to each other: an action in one app can update
+another one.
 
 If an app cannot be loaded, the home page says how many plugins failed; tell your administrator,
 who sees the reason in the plugin list.

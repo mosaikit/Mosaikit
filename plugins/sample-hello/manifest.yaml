@@ -14,8 +14,11 @@ frontend:
     publishes: [sample.hello.greeted]
     subscribes: [sample.hello.greeted]
 contributes:
-  launcher.app:
+  # The app bar of the shell (MK-025).
+  rail.app:
     - id: hello
       title: Hello
       route: /app/hello
       element: mk-sample-hello
+      icon: web/icon.svg
+      order: 90

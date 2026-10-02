@@ -23,7 +23,7 @@ function write(greeting: string): void {
       'frontend:',
       '  entry: web/index.js',
       'contributes:',
-      '  launcher.app:',
+      '  rail.app:',
       '    - { id: kiosk, title: Kiosk, route: /app/kiosk, element: acme-kiosk }',
       '',
     ].join('\n'),

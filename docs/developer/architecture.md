@@ -6,7 +6,7 @@ with the same format and life cycle.
 | Layer | Content |
 |---|---|
 | Kernel | Identity and accounts, organizations, localization, theming, plugin registry, shell, and cross-cutting services (events, jobs, storage, notifications, audit, data policy, entitlements, AI tool registry) |
-| Apps | Plugins of kind `app`: they own a route, a launcher entry and a full screen, and may offer extension points |
+| Apps | Plugins of kind `app`: they own a route, an entry of the app bar and a full screen, and may offer extension points |
 | Extensions | Plugins that contribute to extension points of the kernel or of apps |
 | Extensions of extensions | Plugins that extend other extensions |
 
@@ -88,7 +88,7 @@ launcher rolls back whatever prevented the kernel from rebuilding or starting
 The shell (Lit) asks the kernel for the frontends of active plugins, imports each ES module,
 and calls its `activate(context)` function with a context from `@mosaikit/sdk`: the plugin's
 contributions, the event bus, the current user and an authenticated `fetch`. Apps render as
-custom elements named in their `launcher.app` contribution. A failing plugin never prevents the
+custom elements named in their `rail.app` contribution (`launcher.app` is still read). A failing plugin never prevents the
 others from loading.
 
 ## Communication between plugins

@@ -16,6 +16,15 @@ export async function signIn(page: Page, person: Person = ADMIN): Promise<void> 
 
 export const apps = (page: Page): Locator => page.getByRole('navigation', { name: 'Apps' });
 
+/** Signs out from the menu of the person, in the top bar (MK-025). */
+export async function signOut(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^Account:/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Account' })
+    .getByRole('button', { name: 'Sign out' })
+    .click();
+}
+
 export async function openApp(page: Page, name: string): Promise<void> {
   await apps(page).getByRole('link', { name, exact: true }).click();
 }
@@ -81,6 +90,8 @@ export interface PluginStatus {
   readonly version: string;
   readonly status: string;
   readonly problems: readonly string[];
+  /** What still works but should change, such as launcher.app (MK-025). */
+  readonly warnings: readonly string[];
 }
 
 export async function plugins(): Promise<PluginStatus[]> {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { expect, test } from '@playwright/test';
 import { MARIO } from '../support/env.js';
-import { openApp, signIn } from '../support/shell.js';
+import { openApp, signIn, signOut } from '../support/shell.js';
 
 test.describe('MK-008 Shell with sign-in, launcher and plugin apps', () => {
   test('the way back to Home works from an app and from the Plugins page', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('MK-008 Shell with sign-in, launcher and plugin apps', () => {
     );
     expect(stored).not.toContain(MARIO.password);
 
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    await signOut(page);
     await expect(page.getByRole('button', { name: 'Sign in with a password' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('button', { name: 'Sign in with a password' })).toBeVisible();

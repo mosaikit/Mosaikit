@@ -8,6 +8,13 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A shell that works like the collaboration suites (MK-025, ADR-0026): an app bar on the left
+  (at the bottom on phones) with an icon per app, Home and the pages of administrators; a top bar
+  with the search of apps and pages and the menu of the person (organization, sign-out); Home
+  lists the apps. Plugins contribute to the app bar with `rail.app` (`title`, `route`, `element`,
+  `icon`, `order`); `launcher.app` still works, with a warning in the status of the plugin. The
+  sample plugins and `create-mosaikit-plugin` use `rail.app` with an icon.
+
 - Local registration confirmed by mail (MK-048): the sign-in page offers **Create an account** in
   the organizations that allow it; the account signs in after the link sent to the address is
   opened (`mosaikit.accounts.confirm-email`, `mosaikit.accounts.confirmation-valid-for`, the mail

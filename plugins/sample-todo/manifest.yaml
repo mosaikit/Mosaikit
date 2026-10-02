@@ -15,8 +15,11 @@ frontend:
 data:
   collections: [items]
 contributes:
-  launcher.app:
+  # The app bar of the shell (MK-025).
+  rail.app:
     - id: todo
       title: To do
       route: /app/todo
       element: mk-sample-todo
+      icon: web/icon.svg
+      order: 10
