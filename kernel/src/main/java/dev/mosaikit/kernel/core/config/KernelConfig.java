@@ -164,6 +164,14 @@ public interface KernelConfig {
          */
         @WithDefault("iframe")
         String unverifiedFrontends();
+
+        /**
+         * Watches the plugins directory and reads it again when a file changes, and lets the shell
+         * reload its page then: changed frontends show at once. Java code and schemas still wait
+         * for the next start. On in development mode.
+         */
+        @WithDefault("false")
+        boolean watch();
     }
 
     /** Settings used only when the installation has no account yet. */

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 package dev.mosaikit.kernel.core.plugin;
 
+import dev.mosaikit.kernel.core.config.KernelConfig;
 import jakarta.annotation.security.PermitAll;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -22,9 +23,12 @@ public class PluginAssetResource {
     private static final int MAX_AGE_SECONDS = 300;
 
     private final PluginRegistry registry;
+    private final boolean watched;
 
-    public PluginAssetResource(PluginRegistry registry) {
+    public PluginAssetResource(PluginRegistry registry, KernelConfig config) {
         this.registry = registry;
+        // A watched directory changes while the shell runs: the browser asks every time.
+        this.watched = config.plugins().watch();
     }
 
     /** URL of an asset of a plugin. */
@@ -38,7 +42,11 @@ public class PluginAssetResource {
     @Operation(summary = "Get a static asset of an active plugin")
     public Response asset(@PathParam("id") String id, @PathParam("path") String path) {
         var cache = new CacheControl();
-        cache.setMaxAge(MAX_AGE_SECONDS);
+        if (watched) {
+            cache.setNoCache(true);
+        } else {
+            cache.setMaxAge(MAX_AGE_SECONDS);
+        }
         return registry.findActive(id)
                 .flatMap(plugin -> PluginAssets.resolve(plugin.directory(), path))
                 .map(asset -> Response.ok(asset.file().toFile(), asset.mediaType())

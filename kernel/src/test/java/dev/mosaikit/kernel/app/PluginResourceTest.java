@@ -57,6 +57,8 @@ class PluginResourceTest {
                 .body("[0].bridge.publishes", hasSize(0));
 
         anonymous().get("/api/v1/shell/plugins").then().statusCode(401);
+        // Not watched outside development mode: the shell does not follow a revision.
+        asAdmin().get("/api/v1/shell/plugins/revision").then().statusCode(404);
     }
 
     @Test

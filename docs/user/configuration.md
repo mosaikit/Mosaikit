@@ -60,6 +60,7 @@ Terminate TLS at a reverse proxy or an ingress; in production the kernel sends
 | `mosaikit.plugins.trusted-keys-directory` | `config/trusted-keys` | public keys of trusted publishers |
 | `mosaikit.plugins.signatures` | `optional` | `required`: only packages signed with a trusted key are accepted |
 | `mosaikit.plugins.unverified-frontends` | `iframe` | `iframe` runs the frontends of unverified publishers in a sandboxed iframe; `module` loads them like the others |
+| `mosaikit.plugins.watch` | `false` (`true` in development mode) | read the plugins directory again when a file changes; the shell then reloads its page, so changed frontends show at once |
 | `mosaikit.plugins.providers-directory` | | set by the launcher: where the JARs of Java plugins are |
 | `mosaikit.plugins.packages-directory` | `plugins/.packages` | set by the launcher: where packages are unpacked |
 

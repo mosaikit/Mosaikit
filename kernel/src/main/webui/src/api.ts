@@ -247,6 +247,18 @@ export class KernelClient {
     return this.getJson<FrontendPlugin[]>('/api/v1/shell/plugins');
   }
 
+  /**
+   * The revision of the installed plugins when the kernel watches their directory (development
+   * mode), or `undefined` when it does not.
+   */
+  async pluginRevision(): Promise<number | undefined> {
+    const response = await this.request('/api/v1/shell/plugins/revision');
+    if (response.status !== 200) {
+      return undefined;
+    }
+    return ((await response.json()) as { revision: number }).revision;
+  }
+
   /** The drafts of tools that the person can still confirm, oldest first (MK-015). */
   actionDrafts(): Promise<ActionDraft[]> {
     return this.getJson<ActionDraft[]>('/api/v1/ai/drafts');

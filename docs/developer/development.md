@@ -48,6 +48,9 @@ two people and prints how to sign in. Nothing to install or start by hand but Ja
 - Plugins are read from the `plugins/` directory of the repository. Plugins with Java code, such
   as `sample-notes`, stay `RESTART_REQUIRED`: their code is loaded only by the launcher (next
   section).
+- The `plugins/` directory is watched (`mosaikit.plugins.watch`): save a file of a frontend, or
+  add a plugin without Java code, and the open shells reload their page by themselves, keeping
+  the session.
 - Swagger UI: <http://localhost:8080/q/swagger-ui>. Dev UI: <http://localhost:8080/q/dev-ui>.
 
 To work on the UI alone against a running kernel: `npm run dev -w kernel/src/main/webui`
