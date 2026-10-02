@@ -18,6 +18,7 @@ export default defineConfig({
     include: [
       'sdk/js/test/**/*.test.ts',
       'sdk/ui/test/**/*.test.ts',
+      'tools/test/**/*.test.ts',
       'sdk/create-plugin/test/**/*.test.ts',
       'sdk/java/src/test/ts/**/*.test.ts',
       'kernel/src/main/webui/test/**/*.test.ts',
@@ -39,6 +40,7 @@ export default defineConfig({
         'kernel/src/main/webui/src/main.ts',
         'kernel/src/main/webui/src/mk-shell.ts',
         'kernel/src/main/webui/src/mk-sign-in.ts',
+        'kernel/src/main/webui/src/mk-settings.ts',
         'sdk/ui/src/apply.ts',
         'sdk/ui/src/components.ts',
         'kernel/src/main/webui/src/mk-admin-plugins.ts',
