@@ -10,6 +10,13 @@ export default defineConfig({
     alias: {
       // Use the SDK sources directly, so that changes are picked up with hot module replacement.
       '@mosaikit/sdk': fileURLToPath(new URL('../../../../sdk/js/src/index.ts', import.meta.url)),
+      '@mosaikit/ui/components': fileURLToPath(
+        new URL('../../../../sdk/ui/src/components.ts', import.meta.url),
+      ),
+      '@mosaikit/ui/fonts.css': fileURLToPath(
+        new URL('../../../../sdk/ui/src/fonts.css', import.meta.url),
+      ),
+      '@mosaikit/ui': fileURLToPath(new URL('../../../../sdk/ui/src/index.ts', import.meta.url)),
     },
   },
   server: {

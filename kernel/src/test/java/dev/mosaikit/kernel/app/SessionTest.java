@@ -60,7 +60,8 @@ class SessionTest {
 
         Response ended = given().delete("/api/v1/accounts/session");
         ended.then().statusCode(204);
-        assertThat(ended.getHeader("Set-Cookie")).contains(COOKIE + "=").contains("Max-Age=0");
+        assertThat(ended.getHeaders().getValues("Set-Cookie"))
+                .anyMatch(value -> value.startsWith(COOKIE + "=") && value.contains("Max-Age=0"));
     }
 
     @Test

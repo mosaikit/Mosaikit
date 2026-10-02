@@ -1,0 +1,10 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Massimo Antonini
+ * SPDX-License-Identifier: MPL-2.0
+ *
+ * Titillium Web (SIL Open Font License 1.1), the font of the theme for public administrations,
+ * served by the kernel itself: the pages load nothing from other sites.
+ */
+@import '@fontsource/titillium-web/400.css';
+@import '@fontsource/titillium-web/600.css';
+@import '@fontsource/titillium-web/700.css';

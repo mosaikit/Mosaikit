@@ -10,6 +10,7 @@
   },
   "workspaces": [
     "sdk/js",
+    "sdk/ui",
     "sdk/create-plugin",
     "kernel/src/main/webui",
     "plugins/sample-react",
@@ -29,6 +30,7 @@
     "check:fast": "npm run lint && npm run typecheck && vitest run"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.0",

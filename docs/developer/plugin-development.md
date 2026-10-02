@@ -91,6 +91,26 @@ export default definePlugin({
 Any framework that produces custom elements can be used. Use the shell's CSS custom properties
 (`--mk-surface`, `--mk-fg`, `--mk-accent`, …) so that the plugin follows the theme.
 
+### Components and themes
+
+The shell defines the Fluent UI web components for the page
+([ADR-0032](../adr/0032-fluent-ui-and-themes.md)): a plugin that runs as a module can use
+`<fluent-button>`, `<fluent-dialog>`, `<fluent-tablist>` and the others without bundling them, and
+they follow the theme of the installation. Style everything else with the tokens:
+
+| Token | Use |
+|---|---|
+| `--mk-bg`, `--mk-surface` | background of the page, of cards and panels |
+| `--mk-fg`, `--mk-muted` | text, secondary text |
+| `--mk-line` | borders |
+| `--mk-accent`, `--mk-accent-fg`, `--mk-accent-soft` | primary actions, text on them, selection |
+| `--mk-danger`, `--mk-success`, `--mk-warning` | states |
+| `--mk-focus` | the ring of the keyboard focus |
+| `--mk-radius`, `--mk-font`, `--mk-font-mono` | shapes and fonts |
+
+The tokens change with the theme (`mosaikit.ui.theme`: `mosaikit`, or `pa` in the style of
+Bootstrap Italia) and with the light or dark preference of the system; never hard-code colors.
+
 ### Frontends written with a framework
 
 A frontend may use React, Vue or any framework ([ADR-0020](../adr/0020-frontends-in-any-framework.md)):

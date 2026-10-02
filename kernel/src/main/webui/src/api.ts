@@ -8,6 +8,10 @@ export interface SystemInfo {
   readonly name: string;
   readonly version: string;
   readonly activePlugins: number;
+  /** The theme of the installation (`mosaikit.ui.theme`). */
+  readonly theme: string;
+  /** How many days "remember me" keeps a person signed in. */
+  readonly rememberDays: number;
 }
 
 /** An organization of the signed-in person (MK-017). */
@@ -178,6 +182,16 @@ export class KernelClient {
     }
     this.cookieSession = true;
     return (await response.json()) as Account;
+  }
+
+  /** Remembers the signed-in local account on this browser, with an HttpOnly cookie. */
+  async remember(): Promise<void> {
+    const response = await this.request('/api/v1/accounts/session/remembrance', {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new KernelError(response.status, 'Not remembered', 'This browser is not remembered.');
+    }
   }
 
   /** Uses an access token of the realm of an organization for the following calls, and checks it. */

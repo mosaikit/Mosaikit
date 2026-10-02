@@ -35,12 +35,13 @@ HTTP Basic or bearer tokens.
 
 | Method and path | Who | Purpose |
 |---|---|---|
-| `GET /api/v1/system/info` | anyone | product, version, active plugins |
+| `GET /api/v1/system/info` | anyone | product, version, active plugins, theme |
 | `GET /api/v1/identity/sign-in-options` | anyone | how a person signs in |
 | `POST /api/v1/accounts/registrations` | anyone, when the organization allows it | self-registration |
 | `GET /api/v1/accounts/me` | signed in | the current account |
 | `GET /api/v1/accounts/session` | anyone | the account of the session of the shell, or 204 without one |
-| `DELETE /api/v1/accounts/session` | anyone | end the session of the shell |
+| `DELETE /api/v1/accounts/session` | anyone | end the session of the shell, and forget the browser if it was remembered |
+| `POST /api/v1/accounts/session/remembrance` | signed in, with a password | remember this browser: an HttpOnly cookie signs the person in again for `mosaikit.accounts.remember-for` |
 | `GET /api/v1/shell/plugins` | signed in | frontends of the active plugins, for the shell |
 | `GET /api/v1/shell/plugins/revision` | signed in | changes when the watched plugins directory changes (`mosaikit.plugins.watch`); 404 when it is not watched |
 | `GET /api/v1/plugin-assets/{id}/{path}` | anyone | web files of active plugins |

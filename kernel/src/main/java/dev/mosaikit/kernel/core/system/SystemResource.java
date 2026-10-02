@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 package dev.mosaikit.kernel.core.system;
 
+import dev.mosaikit.kernel.core.config.KernelConfig;
 import dev.mosaikit.kernel.core.plugin.PluginRegistry;
 import jakarta.annotation.security.PermitAll;
 import jakarta.ws.rs.GET;
@@ -21,18 +22,22 @@ public class SystemResource {
 
     private final KernelVersion kernelVersion;
     private final PluginRegistry plugins;
+    private final String theme;
+    private final long rememberDays;
 
-    public SystemResource(KernelVersion kernelVersion, PluginRegistry plugins) {
+    public SystemResource(KernelVersion kernelVersion, PluginRegistry plugins, KernelConfig config) {
         this.kernelVersion = kernelVersion;
         this.plugins = plugins;
+        this.theme = config.ui().theme().id();
+        this.rememberDays = config.accounts().rememberFor().toDays();
     }
 
     @GET
     @Path("/info")
     @PermitAll
-    @Operation(summary = "Get product name, kernel version and number of active plugins")
+    @Operation(summary = "Get product name, kernel version, number of active plugins and theme")
     public SystemInfo info() {
         return new SystemInfo(
-                PRODUCT_NAME, kernelVersion.get().toString(), plugins.active().size());
+                PRODUCT_NAME, kernelVersion.get().toString(), plugins.active().size(), theme, rememberDays);
     }
 }
