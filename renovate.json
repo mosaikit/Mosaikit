@@ -8,10 +8,16 @@
   "rebaseWhen": "conflicted",
   "vulnerabilityAlerts": {
     "schedule": ["at any time"],
-    "labels": ["dependencies", "security"]
+    "labels": ["dependencies", "security"],
+    "minimumReleaseAge": null
   },
   "osvVulnerabilityAlerts": true,
   "packageRules": [
+    {
+      "description": "New versions wait 7 days: a compromised or broken release is usually withdrawn by then.",
+      "matchPackageNames": ["*"],
+      "minimumReleaseAge": "7 days"
+    },
     {
       "description": "Patches and digests in one weekly pull request, merged when the CI is green.",
       "matchUpdateTypes": ["patch", "digest", "pin", "pinDigest"],
@@ -26,18 +32,21 @@
     {
       "description": "Quarkus and its extensions move together.",
       "matchPackageNames": ["io.quarkus:*", "io.quarkus.platform:*", "io.quarkiverse.*:*"],
-      "groupName": "Quarkus"
+      "groupName": "Quarkus",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "PostgreSQL stays on major version 18, as the database of the installations.",
       "matchPackageNames": ["embedded-postgres", "@embedded-postgres/*", "postgres"],
       "groupName": "PostgreSQL",
-      "allowedVersions": "<19"
+      "allowedVersions": "<19",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "Major updates one by one, never merged automatically.",
       "matchUpdateTypes": ["major"],
       "automerge": false
     }
-  ]
+  ],
+  "minimumReleaseAge": "7 days"
 }
