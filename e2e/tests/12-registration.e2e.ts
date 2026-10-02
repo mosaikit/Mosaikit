@@ -57,7 +57,7 @@ test.describe('MK-048 Local registration confirmed by mail', () => {
     expect(new URL(page.url()).search).toBe('');
     await signInWithPassword(page, email);
     await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible();
-    await expect(page.getByText('Luigi Verdi')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Welcome, Luigi Verdi' })).toBeVisible();
 
     // A link works once.
     await page.getByRole('button', { name: 'Sign out' }).click();
