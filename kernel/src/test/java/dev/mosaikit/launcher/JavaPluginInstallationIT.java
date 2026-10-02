@@ -372,6 +372,8 @@ class JavaPluginInstallationIT {
                         "-Dquarkus.datasource.username=" + jdbcUsername,
                         "-Dquarkus.datasource.password=" + jdbcPassword,
                         "-Dmosaikit.bootstrap.admin-password=" + ADMIN_PASSWORD,
+                        // The people of the test sign in at once: no mail server (MK-048).
+                        "-Dmosaikit.accounts.confirm-email=false",
                         "-Dmosaikit.plugins.directory=" + installation.plugins(),
                         "-Dmosaikit.plugins.providers-directory=" + installation.providers(),
                         "-Dmosaikit.plugins.packages-directory=" + installation.packages(),
@@ -384,7 +386,9 @@ class JavaPluginInstallationIT {
         long deadline = System.nanoTime() + ACCEPTANCE.toNanos();
         while (System.nanoTime() < deadline) {
             if (!kernel.isAlive()) {
-                System.out.println("[kernel] stopped with exit code " + kernel.exitValue());
+                // The next start overwrites the log: keep it in the output of the test.
+                System.out.println(
+                        "[kernel] stopped with exit code " + kernel.exitValue() + ":\n" + Files.readString(log));
                 return false;
             }
             if (isReady()) {

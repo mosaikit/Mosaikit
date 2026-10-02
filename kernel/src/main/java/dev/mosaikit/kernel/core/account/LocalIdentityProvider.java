@@ -66,6 +66,10 @@ public class LocalIdentityProvider implements IdentityProvider<UsernamePasswordA
         if (!passwordHasher.verify(password, hash.get())) {
             throw new AuthenticationFailedException();
         }
+        if (!found.isEmailConfirmed()) {
+            // Registered, but the link sent to the address was not opened yet.
+            throw new AuthenticationFailedException();
+        }
         return identityOf(found, requested, host);
     }
 

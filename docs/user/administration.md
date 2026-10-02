@@ -101,6 +101,20 @@ With a password, a person works in one organization at a time: the one of the su
 chosen in the selector of the top bar, or their only organization that accepts passwords. The
 roles of the platform (`platform-admin`) count only with a password, never through a realm.
 
+## Self-registration
+
+People can create their own local account on the sign-in page (**Create an account**) in the
+organizations created with `selfRegistration`, which sign in with a password. They receive a mail
+with a link: until they open it the account does not sign in. The link works once, for
+`mosaikit.accounts.confirmation-valid-for` (24 hours), and they can ask for a new one.
+
+- Turn self-registration off and on in **Settings** (platform administrators): the change is
+  recorded in the audit log, and with it off the sign-in page offers no registration.
+- The mails need a mail server: set `quarkus.mailer.host`, `port`, `username`, `password` and
+  `quarkus.mailer.from` in `config/application.properties`, and `mosaikit.public-url` so that the
+  links point to the address people use. Without a mail server, registrations fail with a
+  message and nothing is created.
+
 ## Audit log
 
 The kernel records who proposed, confirmed, rejected or ran an action of an assistant, and who

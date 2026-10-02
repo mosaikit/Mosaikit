@@ -23,6 +23,7 @@ import {
   KEY_NAME,
   ADMIN,
   MODEL_URL,
+  SMTP_PORT,
   WINDOWS,
   WORK,
 } from './env.js';
@@ -44,6 +45,10 @@ export function defaultSettings(): Settings {
     'mosaikit.marketplace.sources': 'catalog/',
     'mosaikit.assistant.url': MODEL_URL,
     'mosaikit.assistant.model': 'e2e-fake-model',
+    // Mails go to the fake server of the global setup (MK-048).
+    'quarkus.mailer.host': 'localhost',
+    'quarkus.mailer.port': String(SMTP_PORT),
+    'quarkus.mailer.start-tls': 'DISABLED',
   };
 }
 

@@ -63,6 +63,11 @@ Terminate TLS at a reverse proxy or an ingress; in production the kernel sends
 | `mosaikit.plugins.watch` | `false` (`true` in development mode) | read the plugins directory again when a file changes; the shell then reloads its page, so changed frontends show at once |
 | `mosaikit.ui.theme` | `mosaikit` | the theme of the interface: `mosaikit`, or `pa` for public administrations, in the style of Bootstrap Italia |
 | `mosaikit.accounts.remember-for` | `30d` | how long "Remember me" keeps a person signed in on a browser, unless they sign out |
+| `mosaikit.accounts.confirm-email` | `true` | self-registered people confirm their address with a link sent by mail before signing in |
+| `mosaikit.accounts.confirmation-valid-for` | `24h` | how long the link that confirms an address works |
+| `mosaikit.public-url` | | the address of the installation as people reach it, such as `https://mosaikit.example.org`, for the links in mails; without it, the address of the request |
+| `quarkus.mailer.host`, `port`, `username`, `password`, `tls`, `start-tls` | `localhost`, `25` | the mail server that sends the confirmation links |
+| `quarkus.mailer.from` | `Mosaikit <no-reply@localhost>` | the sender of the mails |
 | `mosaikit.plugins.providers-directory` | | set by the launcher: where the JARs of Java plugins are |
 | `mosaikit.plugins.packages-directory` | `plugins/.packages` | set by the launcher: where packages are unpacked |
 

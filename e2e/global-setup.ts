@@ -1,19 +1,24 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
+import { rmSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { join } from 'node:path';
 import { startPostgres } from '../tools/postgres.ts';
+import { startFakeSmtp } from '../tools/smtp.ts';
 import {
   ADMIN,
   ANNA,
   BASE_URL,
   CONTROL_PORT,
+  MAIL,
   MARIO,
   MODEL_PORT,
   ORGANIZATION,
+  SMTP_PORT,
   WORK,
 } from './support/env.js';
 import { startFakeModel } from './support/fake-model.js';
+import { confirmationLink } from './support/mail.js';
 import {
   configure,
   defaultSettings,
@@ -43,6 +48,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   }
   configure(defaultSettings());
   const model = await startFakeModel(MODEL_PORT);
+  rmSync(MAIL, { recursive: true, force: true });
+  const smtp = await startFakeSmtp(SMTP_PORT, MAIL);
   await start();
   await seed();
 
@@ -75,6 +82,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     await stop();
     control.close();
     model.close();
+    await smtp.close();
     await database?.stop();
   };
 }
@@ -105,6 +113,18 @@ async function seed(): Promise<void> {
     });
     if (!registered.ok && registered.status !== 409) {
       throw new Error(`Cannot register ${person.user}: ${String(registered.status)}`);
+    }
+    // They confirm their address with the link of the mail, as people do (MK-048).
+    if (registered.status === 202) {
+      const token = new URL(await confirmationLink(person.user)).searchParams.get('confirm');
+      const confirmed = await fetch(`${BASE_URL}/api/v1/accounts/confirmations`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      if (!confirmed.ok) {
+        throw new Error(`Cannot confirm ${person.user}: ${String(confirmed.status)}`);
+      }
     }
   }
 }

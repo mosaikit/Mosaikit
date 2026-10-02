@@ -46,6 +46,7 @@ public class SessionIdentityProvider implements IdentityProvider<TrustedAuthenti
         return context.runBlocking(() -> {
             UserAccount found = accounts.findForAuthentication(request.getPrincipal())
                     .filter(account -> account.getPasswordHash().isPresent())
+                    .filter(UserAccount::isEmailConfirmed)
                     .orElseThrow(AuthenticationFailedException::new);
             return local.identityOf(found, requested, host);
         });

@@ -9,11 +9,14 @@ import {
   KernelError,
   type Account,
   type ActionDraft,
+  type Registration,
+  type RegistrationOptions,
   type SystemInfo,
 } from './api.js';
 import { FederatedSignIn, type Federation, type Tokens } from './federation.js';
 import { entryForPath, launcherEntries, type LauncherEntry } from './navigation.js';
 import './mk-admin-plugins.js';
+import './mk-admin-settings.js';
 import './mk-assistant.js';
 import './mk-plugin-frame.js';
 import './mk-sign-in.js';
@@ -25,8 +28,11 @@ const DRAFT_REFRESH_MS = 20_000;
 /** How often the shell asks whether the watched plugins changed (development mode). */
 const PLUGIN_WATCH_MS = 1_000;
 
-/** Route of the administration of plugins, for platform administrators (MK-022). */
-const ADMIN_PLUGINS = '/admin/plugins';
+/** The pages of platform administrators: plugins (MK-022) and settings (MK-048). */
+const ADMIN_PAGES = [
+  { path: '/admin/plugins', title: 'Plugins', element: 'mk-admin-plugins' },
+  { path: '/admin/settings', title: 'Settings', element: 'mk-admin-settings' },
+] as const;
 
 /**
  * Root element of the shell: sign-in, launcher navigation and the area where plugin apps render.
@@ -192,6 +198,11 @@ export class MkShell extends LitElement {
   @state() private busy = false;
   /** Email entered at the first step; the password step follows when there is no realm. */
   @state() private email: string | undefined;
+  /** The page of the sign-in: signing in, creating an account, or waiting for the confirmation. */
+  @state() private signInMode: 'sign-in' | 'register' | 'sent' = 'sign-in';
+  @state() private registration: RegistrationOptions | undefined;
+  @state() private sentTo: string | undefined;
+  @state() private notice: string | undefined;
 
   private readonly onPopState = (): void => {
     this.path = location.pathname;
@@ -210,7 +221,34 @@ export class MkShell extends LitElement {
         this.error = 'The kernel is not reachable.';
       },
     );
-    void this.completeFederatedSignIn().then(() => this.resumeSession());
+    this.client.registrationOptions().then(
+      (options) => {
+        this.registration = options;
+      },
+      () => undefined,
+    );
+    void this.confirmFromLink()
+      .then(() => this.completeFederatedSignIn())
+      .then(() => this.resumeSession());
+  }
+
+  /** Confirms the address when the page is the link of a confirmation mail (MK-048). */
+  private async confirmFromLink(): Promise<void> {
+    const url = new URL(location.href);
+    const token = url.searchParams.get('confirm');
+    if (!token) {
+      return;
+    }
+    url.searchParams.delete('confirm');
+    history.replaceState(null, '', url.pathname + url.search);
+    this.email = '';
+    try {
+      await this.client.confirmEmail(token);
+      this.notice = 'Your email address is confirmed. Sign in to start.';
+    } catch (error) {
+      this.error =
+        error instanceof KernelError ? error.message : 'The address could not be confirmed.';
+    }
   }
 
   /** After a reload, enters again with the session of a local account, when there is one. */
@@ -270,6 +308,13 @@ export class MkShell extends LitElement {
       @mk-use-password=${this.usePassword}
       @mk-back=${this.restartSignIn}
       @mk-sign-in=${this.signIn}
+      .mode=${this.signInMode}
+      .registration=${this.registration}
+      .sentTo=${this.sentTo}
+      .notice=${this.notice}
+      @mk-show-register=${this.showRegister}
+      @mk-register=${this.register}
+      @mk-resend=${this.resend}
     ></mk-sign-in>`;
   }
 
@@ -397,12 +442,15 @@ export class MkShell extends LitElement {
     if (!this.isPlatformAdmin()) {
       return nothing;
     }
-    return html`<a
-      href=${ADMIN_PLUGINS}
-      aria-current=${this.path === ADMIN_PLUGINS ? 'page' : 'false'}
-      @click=${this.navigate}
-      >Plugins</a
-    >`;
+    return ADMIN_PAGES.map(
+      (page) =>
+        html`<a
+          href=${page.path}
+          aria-current=${this.path === page.path ? 'page' : 'false'}
+          @click=${this.navigate}
+          >${page.title}</a
+        >`,
+    );
   }
 
   private renderWorkspace(): unknown {
@@ -469,7 +517,53 @@ export class MkShell extends LitElement {
 
   private readonly restartSignIn = (): void => {
     this.error = undefined;
+    this.notice = undefined;
     this.email = undefined;
+    this.signInMode = 'sign-in';
+  };
+
+  private readonly showRegister = (): void => {
+    this.error = undefined;
+    this.notice = undefined;
+    this.signInMode = 'register';
+  };
+
+  /** Creates an account; with a confirmation, waits for the person to open the link. */
+  private readonly register = async (event: CustomEvent<Registration>): Promise<void> => {
+    const registration = event.detail;
+    this.busy = true;
+    this.error = undefined;
+    try {
+      const sent = await this.client.register(registration);
+      if (sent) {
+        this.sentTo = registration.email;
+        this.signInMode = 'sent';
+      } else {
+        const account = await this.client.signIn(registration.email, registration.password);
+        this.signInMode = 'sign-in';
+        await this.enter(account);
+      }
+    } catch (error) {
+      this.error = error instanceof KernelError ? error.message : 'The account was not created.';
+    } finally {
+      this.busy = false;
+    }
+  };
+
+  private readonly resend = async (): Promise<void> => {
+    if (!this.sentTo) {
+      return;
+    }
+    this.busy = true;
+    this.error = undefined;
+    try {
+      await this.client.resendConfirmation(this.sentTo);
+      this.notice = 'We sent a new link. The previous ones do not work any more.';
+    } catch (error) {
+      this.error = error instanceof KernelError ? error.message : 'The link was not sent.';
+    } finally {
+      this.busy = false;
+    }
   };
 
   private readonly signIn = async (event: CustomEvent<PasswordSignIn>): Promise<void> => {
@@ -547,6 +641,7 @@ export class MkShell extends LitElement {
     this.entries = launcherEntries(plugins);
     this.account = account;
     this.email = undefined;
+    this.notice = undefined;
     await this.loadDrafts();
     await this.loadAssistant();
     clearInterval(this.draftTimer);
@@ -662,7 +757,11 @@ export class MkShell extends LitElement {
   }
 
   private showsAdmin(): boolean {
-    return this.path === ADMIN_PLUGINS && this.isPlatformAdmin();
+    return this.adminPage() !== undefined;
+  }
+
+  private adminPage(): (typeof ADMIN_PAGES)[number] | undefined {
+    return this.isPlatformAdmin() ? ADMIN_PAGES.find((page) => page.path === this.path) : undefined;
   }
 
   /**
@@ -675,9 +774,10 @@ export class MkShell extends LitElement {
       area.replaceChildren();
       return;
     }
-    if (area && this.showsAdmin()) {
-      if (area.firstElementChild?.localName !== 'mk-admin-plugins') {
-        const admin = document.createElement('mk-admin-plugins');
+    const page = this.adminPage();
+    if (area && page) {
+      if (area.firstElementChild?.localName !== page.element) {
+        const admin = document.createElement(page.element);
         admin.client = this.client;
         area.replaceChildren(admin);
       }

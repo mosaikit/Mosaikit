@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import type { Registration, RegistrationOptions } from './api.js';
 
 /** What the person asked for on the sign-in page; the shell does it. */
 export interface PasswordSignIn {
@@ -16,6 +17,9 @@ declare global {
     'mk-use-password': CustomEvent<undefined>;
     'mk-back': CustomEvent<undefined>;
     'mk-sign-in': CustomEvent<PasswordSignIn>;
+    'mk-show-register': CustomEvent<undefined>;
+    'mk-register': CustomEvent<Registration>;
+    'mk-resend': CustomEvent<undefined>;
   }
 }
 
@@ -222,6 +226,47 @@ export class MkSignIn extends LitElement {
       flex: 1;
       border-top: 1px solid var(--mk-line);
     }
+    .notice {
+      margin: 0;
+      padding: 10px 12px;
+      border-radius: var(--mk-radius);
+      border-left: 4px solid var(--mk-success);
+      background: color-mix(in srgb, var(--mk-success) 9%, var(--mk-surface));
+      color: var(--mk-fg);
+    }
+    .switch {
+      margin: 0;
+      text-align: center;
+      color: var(--mk-muted);
+    }
+    .link {
+      font: inherit;
+      font-weight: 600;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--mk-accent);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link:focus-visible {
+      outline: 2px solid var(--mk-focus);
+      outline-offset: 2px;
+    }
+    .hint {
+      font-weight: 400;
+      color: var(--mk-muted);
+    }
+    select {
+      flex: 1;
+      font: inherit;
+      font-size: 15px;
+      padding: 10px 12px;
+      border: 0;
+      background: transparent;
+      color: var(--mk-fg);
+      outline: none;
+    }
     .error {
       margin: 0;
       padding: 10px 12px;
@@ -276,6 +321,14 @@ export class MkSignIn extends LitElement {
   @property() error: string | undefined;
   /** How many days "remember me" lasts, as the kernel says. */
   @property({ type: Number }) rememberDays = 30;
+  /** Which page: signing in, creating an account, or waiting for the confirmation of the address. */
+  @property() mode: 'sign-in' | 'register' | 'sent' = 'sign-in';
+  /** Whether the page offers to create an account (MK-048). */
+  @property({ attribute: false }) registration: RegistrationOptions | undefined;
+  /** Where the confirmation link went. */
+  @property() sentTo: string | undefined;
+  /** Good news to show above the form, such as a confirmed address. */
+  @property() notice: string | undefined;
 
   @state() private revealed = false;
 
@@ -295,15 +348,136 @@ export class MkSignIn extends LitElement {
       <div class="panel">
         <div class="card">
           <div class="brand">${mark}<span>${this.product}</span></div>
-          <h1 id="sign-in-title">Sign in</h1>
-          <p class="lead">Welcome back to ${this.product}.</p>
-          ${this.email === undefined ? this.renderEmail() : this.renderPassword()}
+          ${this.renderPage()}
           <footer>
             <span>${this.version ? `Version ${this.version}` : nothing}</span>
             <span>Open source, MPL-2.0</span>
           </footer>
         </div>
       </div>
+    `;
+  }
+
+  private renderPage(): unknown {
+    const notice = this.notice ? html`<p class="notice" role="status">${this.notice}</p>` : nothing;
+    switch (this.mode) {
+      case 'register':
+        return html`<h1 id="sign-in-title">Create an account</h1>
+          <p class="lead">Join ${this.product} with your email address.</p>
+          ${this.renderRegister()}`;
+      case 'sent':
+        return html`<h1 id="sign-in-title">Check your email</h1>
+          ${this.renderSent()}`;
+      default:
+        return html`<h1 id="sign-in-title">Sign in</h1>
+          <p class="lead">Welcome back to ${this.product}.</p>
+          ${notice} ${this.email === undefined ? this.renderEmail() : this.renderPassword()}
+          ${
+            this.registration?.enabled
+              ? html`<p class="switch">
+                  New here?
+                  <button type="button" class="link" @click=${this.showRegister}>
+                    Create an account
+                  </button>
+                </p>`
+              : nothing
+          }`;
+    }
+  }
+
+  private renderRegister(): unknown {
+    const organizations = this.registration?.organizations ?? [];
+    const only = organizations.length === 1 ? organizations[0] : undefined;
+    return html`
+      <form @submit=${this.register} aria-labelledby="sign-in-title">
+        ${
+          only
+            ? html`<input type="hidden" name="organization" .value=${only.slug} />
+                <p class="lead">In ${only.name}.</p>`
+            : html`<label>
+                Organization
+                <span class="control">
+                  <select name="organization" required>
+                    ${organizations.map(
+                      (organization) =>
+                        html`<option value=${organization.slug}>${organization.name}</option>`,
+                    )}
+                  </select>
+                </span>
+              </label>`
+        }
+        <label>
+          Your name
+          <span class="control">
+            <input name="displayName" autocomplete="name" maxlength="120" required />
+          </span>
+        </label>
+        <label>
+          Email
+          <span class="control">
+            <input name="email" type="email" autocomplete="email" maxlength="254" required />
+          </span>
+        </label>
+        <div class="field">
+          <label for="new-password">Password</label>
+          <span class="control">
+            <input
+              id="new-password"
+              name="password"
+              type=${this.revealed ? 'text' : 'password'}
+              autocomplete="new-password"
+              minlength="12"
+              maxlength="128"
+              aria-describedby="password-hint"
+              required
+            />
+            <button
+              class="reveal"
+              type="button"
+              aria-pressed=${this.revealed ? 'true' : 'false'}
+              aria-label=${this.revealed ? 'Hide the password' : 'Show the password'}
+              @click=${this.toggleReveal}
+            >
+              ${this.revealed ? 'Hide' : 'Show'}
+            </button>
+          </span>
+          <small id="password-hint" class="hint">At least 12 characters.</small>
+        </div>
+        ${this.renderError()}
+        <fluent-button
+          role="button"
+          type="submit"
+          appearance="primary"
+          size="large"
+          ?disabled=${this.busy}
+          >Create account</fluent-button
+        >
+        <fluent-button role="button" type="button" appearance="subtle" @click=${this.back}
+          >Back to sign in</fluent-button
+        >
+      </form>
+    `;
+  }
+
+  private renderSent(): unknown {
+    return html`
+      <p class="lead">
+        We sent a link to <strong>${this.sentTo}</strong>. Open it to confirm your address, then
+        sign in.
+      </p>
+      ${this.notice ? html`<p class="notice" role="status">${this.notice}</p>` : nothing}
+      ${this.renderError()}
+      <fluent-button
+        role="button"
+        type="button"
+        appearance="outline"
+        ?disabled=${this.busy}
+        @click=${this.resend}
+        >Send the link again</fluent-button
+      >
+      <fluent-button role="button" type="button" appearance="subtle" @click=${this.back}
+        >Back to sign in</fluent-button
+      >
     `;
   }
 
@@ -412,10 +586,16 @@ export class MkSignIn extends LitElement {
     });
   }
 
-  private emit<K extends 'mk-continue' | 'mk-use-password' | 'mk-back' | 'mk-sign-in'>(
-    type: K,
-    detail: HTMLElementEventMap[K]['detail'],
-  ): void {
+  private emit<
+    K extends
+      | 'mk-continue'
+      | 'mk-use-password'
+      | 'mk-back'
+      | 'mk-sign-in'
+      | 'mk-show-register'
+      | 'mk-register'
+      | 'mk-resend',
+  >(type: K, detail: HTMLElementEventMap[K]['detail']): void {
     this.dispatchEvent(new CustomEvent(type, { detail, bubbles: true, composed: true }));
   }
 
@@ -432,6 +612,26 @@ export class MkSignIn extends LitElement {
   private readonly back = (): void => {
     this.revealed = false;
     this.emit('mk-back', undefined);
+  };
+
+  private readonly showRegister = (): void => {
+    this.revealed = false;
+    this.emit('mk-show-register', undefined);
+  };
+
+  private readonly register = (event: SubmitEvent): void => {
+    event.preventDefault();
+    const data = new FormData(event.target as HTMLFormElement);
+    this.emit('mk-register', {
+      organization: text(data, 'organization'),
+      displayName: text(data, 'displayName').trim(),
+      email: text(data, 'email').trim(),
+      password: text(data, 'password'),
+    });
+  };
+
+  private readonly resend = (): void => {
+    this.emit('mk-resend', undefined);
   };
 
   private readonly toggleReveal = (): void => {

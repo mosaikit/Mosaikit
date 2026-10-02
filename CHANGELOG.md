@@ -8,6 +8,13 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Local registration confirmed by mail (MK-048): the sign-in page offers **Create an account** in
+  the organizations that allow it; the account signs in after the link sent to the address is
+  opened (`mosaikit.accounts.confirm-email`, `mosaikit.accounts.confirmation-valid-for`, the mail
+  server in `quarkus.mailer.*`, the links on `mosaikit.public-url`). Platform administrators turn
+  self-registration off and on in **Settings** (`/api/v1/platform/settings`). `npm run dev` and the
+  end-to-end tests use a fake mail server that prints or keeps the links.
+
 - A new sign-in page with "remember me" (MK-047): a remembered person stays signed in on the
   browser for `mosaikit.accounts.remember-for` (30 days), with an HttpOnly cookie kept in the
   database as a digest, until they sign out.

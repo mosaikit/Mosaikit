@@ -46,6 +46,10 @@ public class UserAccount {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    /** When the person proved to own the address; empty until a self-registered person confirms it. */
+    @Column(name = "email_confirmed_at")
+    private Instant emailConfirmedAt;
+
     /** Required by JPA. */
     protected UserAccount() {}
 
@@ -62,6 +66,7 @@ public class UserAccount {
         this.displayName = Objects.requireNonNull(displayName, "displayName");
         this.roles = String.join(",", new TreeSet<>(platformRoles));
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+        this.emailConfirmedAt = createdAt;
     }
 
     /**
@@ -70,6 +75,21 @@ public class UserAccount {
      */
     public static UserAccount withoutPassword(String username, String displayName, Instant createdAt) {
         return new UserAccount(username, displayName, Set.of(), createdAt);
+    }
+
+    /** A self-registered person must confirm the address before signing in. */
+    public void requireConfirmation() {
+        this.emailConfirmedAt = null;
+    }
+
+    /** The person opened the link sent to the address. */
+    public void confirmEmail(Instant now) {
+        this.emailConfirmedAt = Objects.requireNonNull(now, "now");
+    }
+
+    /** Whether the address is confirmed; only confirmed accounts sign in. */
+    public boolean isEmailConfirmed() {
+        return emailConfirmedAt != null;
     }
 
     public UUID getId() {
