@@ -97,6 +97,24 @@ export default definePlugin({
 Any framework that produces custom elements can be used. Use the shell's CSS custom properties
 (`--mk-surface`, `--mk-fg`, `--mk-accent`, …) so that the plugin follows the theme.
 
+### Settings, language and theme
+
+A plugin adds a section to the personal settings with the point `settings.section`; `roles`, when
+given, shows it only to people with one of them:
+
+```yaml
+contributes:
+  settings.section:
+    - id: export
+      title: Export
+      element: example-export-settings   # custom element rendered in the section
+      roles: [organization-admin]        # optional
+```
+
+`context.locale` is the language the person chose (`en`, `it`); read it when rendering. The shell
+publishes `shell.locale.changed` (`{ locale }`) and `shell.theme.changed` (`{ theme, appearance }`)
+on the event bus, and mounts the current app again when the language changes.
+
 ### Components and themes
 
 The shell defines the Fluent UI web components for the page

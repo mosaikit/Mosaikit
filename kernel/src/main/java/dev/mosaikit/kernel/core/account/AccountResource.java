@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
@@ -97,6 +98,24 @@ public class AccountResource {
     /** The address to send the confirmation link to again. */
     public record ResendRequest(
             @NotBlank @Email @Size(max = 254) String email) {}
+
+    @GET
+    @Path("/me/preferences")
+    @Authenticated
+    @Operation(summary = "Get the personal settings of the signed-in person")
+    public Preferences preferences() {
+        return service.preferences(identity.getPrincipal().getName());
+    }
+
+    @PUT
+    @Path("/me/preferences")
+    @Authenticated
+    @Operation(
+            summary = "Replace the personal settings of the signed-in person",
+            description = "Theme, appearance, language and hidden apps, kept for the next sign-in (MK-027).")
+    public Preferences changePreferences(@Valid @NotNull Preferences preferences) {
+        return service.changePreferences(identity.getPrincipal().getName(), preferences);
+    }
 
     @GET
     @Path("/me")

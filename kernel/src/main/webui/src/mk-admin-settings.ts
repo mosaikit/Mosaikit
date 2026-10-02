@@ -3,6 +3,7 @@
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { KernelClient, PlatformSettings } from './api.js';
+import { t } from './i18n.js';
 
 /**
  * The settings of the platform for platform administrators (MK-048): whether people can create
@@ -103,15 +104,16 @@ export class MkAdminSettings extends LitElement {
 
   override render(): unknown {
     return html`
-      <h1>Settings</h1>
+      <h1>${t('Platform settings')}</h1>
       ${
         this.settings
           ? html`<div class="setting">
               <div>
-                <label for="registration">People can create their own account</label>
+                <label for="registration">${t('People can create their own account')}</label>
                 <p id="registration-help">
-                  On the sign-in page, in the organizations that allow it. A link sent by mail
-                  confirms the address before the first sign-in.
+                  ${t(
+                    'On the sign-in page, in the organizations that allow it. A link sent by mail confirms the address before the first sign-in.',
+                  )}
                 </p>
               </div>
               <input
@@ -136,7 +138,7 @@ export class MkAdminSettings extends LitElement {
     try {
       this.settings = await this.client?.changePlatformSettings({ registration });
       this.show(
-        registration ? 'People can create their own account.' : 'Self-registration is off.',
+        registration ? t('People can create their own account.') : t('Self-registration is off.'),
         false,
       );
     } catch (error) {

@@ -14,6 +14,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * The account of a person: one per email address, whatever the organizations the person belongs
@@ -50,6 +52,11 @@ public class UserAccount {
     @Column(name = "email_confirmed_at")
     private Instant emailConfirmedAt;
 
+    /** The personal settings, as JSON (MK-027). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(nullable = false)
+    private String preferences = "{}";
+
     /** Required by JPA. */
     protected UserAccount() {}
 
@@ -75,6 +82,15 @@ public class UserAccount {
      */
     public static UserAccount withoutPassword(String username, String displayName, Instant createdAt) {
         return new UserAccount(username, displayName, Set.of(), createdAt);
+    }
+
+    /** The personal settings, as JSON. */
+    public String getPreferences() {
+        return preferences;
+    }
+
+    public void setPreferences(String preferences) {
+        this.preferences = preferences;
     }
 
     /** A self-registered person must confirm the address before signing in. */

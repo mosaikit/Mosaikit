@@ -46,6 +46,21 @@ another one.
 If an app cannot be loaded, the home page says how many plugins failed; tell your administrator,
 who sees the reason in the plugin list.
 
+## Your settings
+
+Open the menu of your avatar and choose **Settings**:
+
+- **Appearance**: as the device (light or dark), light, dark or high contrast;
+- **Theme**: the default of the installation, or another theme it offers (for example the one for
+  public administrations);
+- **Language**: English or Italian. The shell, and the apps that follow the language, change at
+  once;
+- **Organization**, if you belong to several: the apps reload for the one you choose;
+- **Apps in the app bar**: untick the apps you do not use; the apps your organization pinned stay;
+- the sections that apps add, such as their own preferences.
+
+Your choices are kept with your account: you find them at the next sign-in, on any device.
+
 ## The assistant
 
 When the installation has an assistant, the home page shows it: ask in your language, for example

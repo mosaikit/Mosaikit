@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: MPL-2.0
 package dev.mosaikit.kernel.core.account;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.mosaikit.kernel.core.config.KernelConfig;
 import dev.mosaikit.kernel.core.error.ConflictException;
 import dev.mosaikit.kernel.core.error.ForbiddenOperationException;
+import dev.mosaikit.kernel.core.error.InvalidInputException;
 import dev.mosaikit.kernel.core.error.ResourceNotFoundException;
 import dev.mosaikit.kernel.core.organization.Organization;
 import dev.mosaikit.kernel.core.organization.OrganizationMember;
@@ -35,6 +38,10 @@ import java.util.stream.Collectors;
 @Transactional
 public class AccountService {
 
+    /** An app of the app bar in the personal settings: {@code <plugin id>/<app id>}. */
+    private static final java.util.regex.Pattern HIDDEN_APP =
+            java.util.regex.Pattern.compile("^[a-z0-9][a-z0-9.-]{0,99}/[a-z0-9][a-z0-9-]{0,63}$");
+
     /** Roles a person can have in an organization. */
     static final Set<String> ORGANIZATION_ROLES = Set.of(Roles.ORGANIZATION_ADMIN, Roles.ORGANIZATION_USER);
 
@@ -42,6 +49,7 @@ public class AccountService {
     private final OrganizationMembers members;
     private final OrganizationService organizations;
     private final PasswordHasher passwordHasher;
+    private final ObjectMapper json;
     private final PlatformSettingsService settings;
     private final ConfirmationMail confirmationMail;
     private final boolean confirmEmail;
@@ -52,6 +60,7 @@ public class AccountService {
             OrganizationMembers members,
             OrganizationService organizations,
             PasswordHasher passwordHasher,
+            ObjectMapper json,
             PlatformSettingsService settings,
             ConfirmationMail confirmationMail,
             KernelConfig config,
@@ -60,6 +69,7 @@ public class AccountService {
         this.members = members;
         this.organizations = organizations;
         this.passwordHasher = passwordHasher;
+        this.json = json;
         this.settings = settings;
         this.confirmationMail = confirmationMail;
         this.confirmEmail = config.accounts().confirmEmail();
@@ -259,7 +269,44 @@ public class AccountService {
                 Set.copyOf(roles),
                 organizationId.orElse(null),
                 organizationId.map(byId::get).map(Organization::getSlug).orElse(null),
-                memberships);
+                memberships,
+                readPreferences(account));
+    }
+
+    /** The personal settings of the signed-in person (MK-027). */
+    public Preferences preferences(String username) {
+        return accounts.findByUsername(normalize(username))
+                .map(this::readPreferences)
+                .orElseThrow(() -> new ResourceNotFoundException("No account for the current identity."));
+    }
+
+    /** Replaces the personal settings of the signed-in person. */
+    public Preferences changePreferences(String username, Preferences preferences) {
+        UserAccount account = accounts.findByUsername(normalize(username))
+                .orElseThrow(() -> new ResourceNotFoundException("No account for the current identity."));
+        List<String> wrong = preferences.hiddenApps().stream()
+                .filter(app -> !HIDDEN_APP.matcher(app).matches())
+                .toList();
+        if (!wrong.isEmpty()) {
+            throw new InvalidInputException(
+                    List.of("hiddenApps must hold <plugin id>/<app id>, not " + String.join(", ", wrong)));
+        }
+        try {
+            account.setPreferences(json.writeValueAsString(preferences));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Preferences are plain values", e);
+        }
+        accounts.update(account);
+        return readPreferences(account);
+    }
+
+    private Preferences readPreferences(UserAccount account) {
+        try {
+            return json.readValue(account.getPreferences(), Preferences.class);
+        } catch (JsonProcessingException e) {
+            // Settings written by an older version: the defaults, rather than no sign-in.
+            return Preferences.NONE;
+        }
     }
 
     private static String normalize(String username) {

@@ -4,18 +4,21 @@ import { createDarkTheme, createLightTheme, type BrandVariants } from '@fluentui
 
 /**
  * The themes of the shell. Each one gives the tokens of Fluent UI and the `--mk-*` tokens that
- * plugins read, for a light and a dark color scheme.
+ * plugins read, for a light and a dark color scheme; the high contrast scheme is the same for all.
+ * The kernel has two themes; theme plugins add others (MK-028).
  */
 export const THEMES = ['mosaikit', 'pa'] as const;
-export type ThemeName = (typeof THEMES)[number];
-export type ColorScheme = 'light' | 'dark';
+/** The identifier of a theme: a built-in one, or the identifier of a theme plugin. */
+export type ThemeName = string;
+export type ColorScheme = 'light' | 'dark' | 'contrast';
 
-/** Whether a value is the name of a theme. */
+/** Whether a value names a theme that is available. */
 export function isThemeName(value: unknown): value is ThemeName {
-  return typeof value === 'string' && (THEMES as readonly string[]).includes(value);
+  return typeof value === 'string' && DEFINITIONS.has(value);
 }
 
-interface Palette {
+/** The colors of a scheme. */
+export interface Palette {
   readonly brand: string;
   readonly background: string;
   readonly surface: string;
@@ -29,7 +32,8 @@ interface Palette {
   readonly focus: string;
 }
 
-interface ThemeDefinition {
+/** A complete theme. */
+export interface ThemeDefinition {
   readonly title: string;
   readonly font: string;
   readonly monospace: string;
@@ -41,7 +45,7 @@ interface ThemeDefinition {
 
 const MONOSPACE = "'Roboto Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace";
 
-const DEFINITIONS: Record<ThemeName, ThemeDefinition> = {
+const BUILT_IN: Record<(typeof THEMES)[number], ThemeDefinition> = {
   // The default: a workspace in the manner of collaboration suites, on the fonts of the system.
   mosaikit: {
     title: 'Mosaikit',
@@ -109,9 +113,75 @@ const DEFINITIONS: Record<ThemeName, ThemeDefinition> = {
   },
 };
 
+const DEFINITIONS = new Map<ThemeName, ThemeDefinition>(Object.entries(BUILT_IN));
+
+/**
+ * The high contrast scheme, the same for every theme: white on black, yellow for what can be
+ * acted on, cyan for the focus (WCAG 2.1 AAA contrast for text).
+ */
+const CONTRAST: Palette = {
+  brand: '#ffff00',
+  background: '#000000',
+  surface: '#000000',
+  foreground: '#ffffff',
+  muted: '#e0e0e0',
+  line: '#ffffff',
+  danger: '#ff8080',
+  success: '#80ff80',
+  warning: '#ffd280',
+  focus: '#00ffff',
+};
+
+/** What a theme plugin brings (MK-028): only some values; the others come from the default theme. */
+export interface ThemeInput {
+  readonly title: string;
+  readonly font?: string;
+  readonly monospace?: string;
+  readonly radius?: number;
+  readonly light?: Partial<Palette>;
+  readonly dark?: Partial<Palette>;
+}
+
+const COLOR = /^#[0-9a-f]{6}$/i;
+const FONT = /^[\w\s'",.-]{1,200}$/;
+
+/** The colors of a scheme of a theme plugin that are valid, so that a broken value cannot break the shell. */
+function validColors(palette: Partial<Palette> | undefined): Partial<Palette> {
+  return Object.fromEntries(
+    Object.entries(palette ?? {}).filter(
+      ([, value]) => typeof value === 'string' && COLOR.test(value),
+    ),
+  );
+}
+
+/**
+ * Adds a theme, such as one of a theme plugin; every value it misses, or that is not valid, comes
+ * from the default theme.
+ */
+export function registerTheme(id: ThemeName, input: ThemeInput): void {
+  const base = BUILT_IN.mosaikit;
+  const font = input.font && FONT.test(input.font) ? input.font : base.font;
+  DEFINITIONS.set(id, {
+    title: input.title || id,
+    font,
+    monospace: input.monospace && FONT.test(input.monospace) ? input.monospace : base.monospace,
+    radius:
+      typeof input.radius === 'number' && input.radius >= 0 && input.radius <= 24
+        ? input.radius
+        : base.radius,
+    light: { ...base.light, ...validColors(input.light) },
+    dark: { ...base.dark, ...validColors(input.dark) },
+  });
+}
+
+/** The available themes, the built-in ones first. */
+export function themes(): { readonly id: ThemeName; readonly title: string }[] {
+  return [...DEFINITIONS].map(([id, definition]) => ({ id, title: definition.title }));
+}
+
 /** The title of a theme, for the people who choose it. */
 export function themeTitle(name: ThemeName): string {
-  return DEFINITIONS[name].title;
+  return (DEFINITIONS.get(name) ?? BUILT_IN.mosaikit).title;
 }
 
 function channels(hex: string): [number, number, number] {
@@ -155,8 +225,8 @@ export interface ThemeTokens {
 
 /** The tokens of a theme in a color scheme. */
 export function themeTokens(name: ThemeName, scheme: ColorScheme): ThemeTokens {
-  const theme = DEFINITIONS[name];
-  const palette = theme[scheme];
+  const theme = DEFINITIONS.get(name) ?? BUILT_IN.mosaikit;
+  const palette = scheme === 'contrast' ? CONTRAST : theme[scheme];
   const brand = brandVariants(palette.brand);
   const base = scheme === 'light' ? createLightTheme(brand) : createDarkTheme(brand);
   const radius = `${String(theme.radius)}px`;
@@ -180,7 +250,8 @@ export function themeTokens(name: ThemeName, scheme: ColorScheme): ThemeTokens {
     colorStatusSuccessForeground1: palette.success,
     colorStatusWarningForeground1: palette.warning,
   };
-  const accent = scheme === 'light' ? palette.brand : brand[100];
+  const light = scheme === 'light';
+  const accent = scheme === 'contrast' ? CONTRAST.brand : light ? palette.brand : brand[100];
   return {
     fluent,
     mosaikit: {
@@ -191,9 +262,9 @@ export function themeTokens(name: ThemeName, scheme: ColorScheme): ThemeTokens {
       '--mk-line': palette.line,
       '--mk-accent': accent,
       // The brand color of the light scheme in both: white text stays readable on it.
-      '--mk-brand': theme.light.brand,
-      '--mk-accent-fg': scheme === 'light' ? '#ffffff' : brand[10],
-      '--mk-accent-soft': scheme === 'light' ? brand[160] : brand[30],
+      '--mk-brand': scheme === 'contrast' ? '#000000' : theme.light.brand,
+      '--mk-accent-fg': scheme === 'contrast' ? '#000000' : light ? '#ffffff' : brand[10],
+      '--mk-accent-soft': scheme === 'contrast' ? '#333300' : light ? brand[160] : brand[30],
       '--mk-danger': palette.danger,
       '--mk-success': palette.success,
       '--mk-warning': palette.warning,

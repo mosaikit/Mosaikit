@@ -54,6 +54,17 @@ export interface Account {
   readonly organizationId: string | null;
   readonly organization?: string | null;
   readonly memberships?: readonly Membership[];
+  /** The personal settings (MK-027). */
+  readonly preferences?: Preferences;
+}
+
+/** The personal settings of a person (MK-027); `null` means the default of the installation. */
+export interface Preferences {
+  readonly theme: string | null;
+  readonly appearance: 'system' | 'light' | 'dark' | 'contrast' | null;
+  readonly language: 'en' | 'it' | null;
+  /** `<plugin id>/<app id>` of the apps hidden from the app bar. */
+  readonly hiddenApps: readonly string[];
 }
 
 /** Header with which the shell names the organization chosen by the person. */
@@ -258,6 +269,11 @@ export class KernelClient {
   /** Sends the confirmation link to an address again; the kernel never says if it exists. */
   async resendConfirmation(email: string): Promise<void> {
     await this.send('/api/v1/accounts/confirmations/requests', { email });
+  }
+
+  /** The personal settings of the signed-in person (MK-027). */
+  changePreferences(preferences: Preferences): Promise<Preferences> {
+    return this.sendJson<Preferences>('/api/v1/accounts/me/preferences', 'PUT', preferences);
   }
 
   /** The settings of the platform, for platform administrators. */

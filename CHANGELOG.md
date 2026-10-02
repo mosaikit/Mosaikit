@@ -8,6 +8,12 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Personal settings (MK-027): appearance (as the device, light, dark, high contrast), theme,
+  language (English or Italian, for the shell and for the plugins through `context.locale`),
+  organization and the apps of the app bar, kept with the account
+  (`/api/v1/accounts/me/preferences`); plugins add sections with `settings.section`, for the roles
+  they choose. The platform administration page is now called **Platform**.
+
 - A shell that works like the collaboration suites (MK-025, ADR-0026): an app bar on the left
   (at the bottom on phones) with an icon per app, Home and the pages of administrators; a top bar
   with the search of apps and pages and the menu of the person (organization, sign-out); Home

@@ -3,6 +3,7 @@
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Registration, RegistrationOptions } from './api.js';
+import { t } from './i18n.js';
 
 /** What the person asked for on the sign-in page; the shell does it. */
 export interface PasswordSignIn {
@@ -329,6 +330,8 @@ export class MkSignIn extends LitElement {
   @property() sentTo: string | undefined;
   /** Good news to show above the form, such as a confirmed address. */
   @property() notice: string | undefined;
+  /** The language of the texts (MK-027): a change renders the page again. */
+  @property() language = 'en';
 
   @state() private revealed = false;
 
@@ -336,13 +339,13 @@ export class MkSignIn extends LitElement {
     return html`
       <section class="hero" aria-hidden="true">
         <div class="mosaic">${this.tiles()}</div>
-        <h2>All the apps of your organization, in one place.</h2>
+        <h2>${t('All the apps of your organization, in one place.')}</h2>
         <ul>
           ${[
             'One sign-in for every app',
             'Your data stays in your organization',
             'On any device, accessible to everyone',
-          ].map((text) => html`<li>${check}${text}</li>`)}
+          ].map((text) => html`<li>${check}${t(text)}</li>`)}
         </ul>
       </section>
       <div class="panel">
@@ -350,8 +353,10 @@ export class MkSignIn extends LitElement {
           <div class="brand">${mark}<span>${this.product}</span></div>
           ${this.renderPage()}
           <footer>
-            <span>${this.version ? `Version ${this.version}` : nothing}</span>
-            <span>Open source, MPL-2.0</span>
+            <span
+              >${this.version ? t('Version {version}', { version: this.version }) : nothing}</span
+            >
+            <span>${t('Open source, MPL-2.0')}</span>
           </footer>
         </div>
       </div>
@@ -362,22 +367,24 @@ export class MkSignIn extends LitElement {
     const notice = this.notice ? html`<p class="notice" role="status">${this.notice}</p>` : nothing;
     switch (this.mode) {
       case 'register':
-        return html`<h1 id="sign-in-title">Create an account</h1>
-          <p class="lead">Join ${this.product} with your email address.</p>
+        return html`<h1 id="sign-in-title">${t('Create an account')}</h1>
+          <p class="lead">
+            ${t('Join {product} with your email address.', { product: this.product })}
+          </p>
           ${this.renderRegister()}`;
       case 'sent':
-        return html`<h1 id="sign-in-title">Check your email</h1>
+        return html`<h1 id="sign-in-title">${t('Check your email')}</h1>
           ${this.renderSent()}`;
       default:
-        return html`<h1 id="sign-in-title">Sign in</h1>
-          <p class="lead">Welcome back to ${this.product}.</p>
+        return html`<h1 id="sign-in-title">${t('Sign in')}</h1>
+          <p class="lead">${t('Welcome back to {product}.', { product: this.product })}</p>
           ${notice} ${this.email === undefined ? this.renderEmail() : this.renderPassword()}
           ${
             this.registration?.enabled
               ? html`<p class="switch">
-                  New here?
+                  ${t('New here?')}
                   <button type="button" class="link" @click=${this.showRegister}>
-                    Create an account
+                    ${t('Create an account')}
                   </button>
                 </p>`
               : nothing
@@ -393,9 +400,9 @@ export class MkSignIn extends LitElement {
         ${
           only
             ? html`<input type="hidden" name="organization" .value=${only.slug} />
-                <p class="lead">In ${only.name}.</p>`
+                <p class="lead">${t('In {organization}.', { organization: only.name })}</p>`
             : html`<label>
-                Organization
+                ${t('Organization')}
                 <span class="control">
                   <select name="organization" required>
                     ${organizations.map(
@@ -407,19 +414,19 @@ export class MkSignIn extends LitElement {
               </label>`
         }
         <label>
-          Your name
+          ${t('Your name')}
           <span class="control">
             <input name="displayName" autocomplete="name" maxlength="120" required />
           </span>
         </label>
         <label>
-          Email
+          ${t('Email')}
           <span class="control">
             <input name="email" type="email" autocomplete="email" maxlength="254" required />
           </span>
         </label>
         <div class="field">
-          <label for="new-password">Password</label>
+          <label for="new-password">${t('Password')}</label>
           <span class="control">
             <input
               id="new-password"
@@ -435,13 +442,13 @@ export class MkSignIn extends LitElement {
               class="reveal"
               type="button"
               aria-pressed=${this.revealed ? 'true' : 'false'}
-              aria-label=${this.revealed ? 'Hide the password' : 'Show the password'}
+              aria-label=${this.revealed ? t('Hide the password') : t('Show the password')}
               @click=${this.toggleReveal}
             >
-              ${this.revealed ? 'Hide' : 'Show'}
+              ${this.revealed ? t('Hide') : t('Show')}
             </button>
           </span>
-          <small id="password-hint" class="hint">At least 12 characters.</small>
+          <small id="password-hint" class="hint">${t('At least 12 characters.')}</small>
         </div>
         ${this.renderError()}
         <fluent-button
@@ -450,10 +457,10 @@ export class MkSignIn extends LitElement {
           appearance="primary"
           size="large"
           ?disabled=${this.busy}
-          >Create account</fluent-button
+          >${t('Create account')}</fluent-button
         >
         <fluent-button role="button" type="button" appearance="subtle" @click=${this.back}
-          >Back to sign in</fluent-button
+          >${t('Back to sign in')}</fluent-button
         >
       </form>
     `;
@@ -461,10 +468,7 @@ export class MkSignIn extends LitElement {
 
   private renderSent(): unknown {
     return html`
-      <p class="lead">
-        We sent a link to <strong>${this.sentTo}</strong>. Open it to confirm your address, then
-        sign in.
-      </p>
+      <p class="lead">${sentLead(this.sentTo ?? '')}</p>
       ${this.notice ? html`<p class="notice" role="status">${this.notice}</p>` : nothing}
       ${this.renderError()}
       <fluent-button
@@ -473,10 +477,10 @@ export class MkSignIn extends LitElement {
         appearance="outline"
         ?disabled=${this.busy}
         @click=${this.resend}
-        >Send the link again</fluent-button
+        >${t('Send the link again')}</fluent-button
       >
       <fluent-button role="button" type="button" appearance="subtle" @click=${this.back}
-        >Back to sign in</fluent-button
+        >${t('Back to sign in')}</fluent-button
       >
     `;
   }
@@ -485,7 +489,7 @@ export class MkSignIn extends LitElement {
     return html`
       <form @submit=${this.continue} aria-labelledby="sign-in-title">
         <label>
-          Email or username
+          ${t('Email or username')}
           <span class="control">
             <input name="username" inputmode="email" autocomplete="username" required />
           </span>
@@ -497,16 +501,16 @@ export class MkSignIn extends LitElement {
           appearance="primary"
           size="large"
           ?disabled=${this.busy}
-          >Continue</fluent-button
+          >${t('Continue')}</fluent-button
         >
-        <div class="or">or</div>
+        <div class="or">${t('or')}</div>
         <fluent-button
           role="button"
           type="button"
           appearance="outline"
           size="large"
           @click=${this.usePassword}
-          >Sign in with a password</fluent-button
+          >${t('Sign in with a password')}</fluent-button
         >
       </form>
     `;
@@ -516,7 +520,7 @@ export class MkSignIn extends LitElement {
     return html`
       <form @submit=${this.signIn} aria-labelledby="sign-in-title">
         <label>
-          Email or username
+          ${t('Email or username')}
           <span class="control">
             <input
               name="username"
@@ -528,7 +532,7 @@ export class MkSignIn extends LitElement {
           </span>
         </label>
         <div class="field">
-          <label for="password">Password</label>
+          <label for="password">${t('Password')}</label>
           <span class="control">
             <input
               id="password"
@@ -541,19 +545,19 @@ export class MkSignIn extends LitElement {
               class="reveal"
               type="button"
               aria-pressed=${this.revealed ? 'true' : 'false'}
-              aria-label=${this.revealed ? 'Hide the password' : 'Show the password'}
+              aria-label=${this.revealed ? t('Hide the password') : t('Show the password')}
               @click=${this.toggleReveal}
             >
-              ${this.revealed ? 'Hide' : 'Show'}
+              ${this.revealed ? t('Hide') : t('Show')}
             </button>
           </span>
         </div>
         <div class="remember">
           <input id="remember" type="checkbox" name="remember" aria-describedby="remember-hint" />
           <label for="remember"
-            >Remember me
+            >${t('Remember me')}
             <small id="remember-hint"
-              >Stay signed in on this device for ${this.rememberDays} days.</small
+              >${t('Stay signed in on this device for {days} days.', { days: this.rememberDays })}</small
             ></label
           >
         </div>
@@ -564,10 +568,10 @@ export class MkSignIn extends LitElement {
           appearance="primary"
           size="large"
           ?disabled=${this.busy}
-          >Sign in</fluent-button
+          >${t('Sign in')}</fluent-button
         >
         <fluent-button role="button" type="button" appearance="subtle" @click=${this.back}
-          >Back</fluent-button
+          >${t('Back')}</fluent-button
         >
       </form>
     `;
@@ -673,3 +677,11 @@ const mark = html`<svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="t
   <rect x="1" y="15" width="12" height="12" rx="3" fill="var(--mk-accent)" opacity="0.35" />
   <rect x="15" y="15" width="12" height="12" rx="3" fill="var(--mk-accent)" opacity="0.8" />
 </svg>`;
+
+/** "We sent a link to <address>…", with the address in bold in every language. */
+function sentLead(address: string): unknown {
+  const [before, after] = t(
+    'We sent a link to {address}. Open it to confirm your address, then sign in.',
+  ).split('{address}');
+  return html`${before}<strong>${address}</strong>${after}`;
+}
