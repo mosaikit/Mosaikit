@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
 import { createServer, type Server } from 'node:http';
+import { join } from 'node:path';
+import { startPostgres } from '../tools/postgres.ts';
 import {
   ADMIN,
   ANNA,
@@ -9,6 +11,7 @@ import {
   MARIO,
   MODEL_PORT,
   ORGANIZATION,
+  WORK,
 } from './support/env.js';
 import { startFakeModel } from './support/fake-model.js';
 import {
@@ -29,6 +32,16 @@ import {
  */
 export default async function globalSetup(): Promise<() => Promise<void>> {
   prepare();
+  // Without E2E_DB_URL, a PostgreSQL of its own, deleted at the end (nothing to start by hand).
+  const database = process.env.E2E_DB_URL
+    ? undefined
+    : await startPostgres({ directory: join(WORK, 'postgres'), persistent: false });
+  if (database) {
+    process.env.E2E_DB_URL = database.url;
+    process.env.E2E_DB_USERNAME = database.user;
+    process.env.E2E_DB_PASSWORD = database.password;
+  }
+  configure(defaultSettings());
   const model = await startFakeModel(MODEL_PORT);
   await start();
   await seed();
@@ -62,6 +75,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     await stop();
     control.close();
     model.close();
+    await database?.stop();
   };
 }
 

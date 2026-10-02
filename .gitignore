@@ -7,6 +7,9 @@ build/
 .quinoa/
 *.log
 
+# npm run dev: the database of development
+.dev/
+
 # End-to-end tests: the test installation, results and report
 e2e/.work/
 e2e/report/

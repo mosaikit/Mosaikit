@@ -24,6 +24,9 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-*'
   workflow_dispatch:
+  # The nightly lane: the slow tests and the analyses that pull requests skip.
+  schedule:
+    - cron: '17 2 * * *'
 
 # A newer run of the same branch or pull request cancels this one, which saves compute minutes;
 # the runs of a tag (the release) are never cancelled.
@@ -94,6 +97,8 @@ jobs:
   # follows the code run in the frontend (docs/test) and backend (DocumentationTest) jobs.
   # On a tag the release job attaches the bundle.
   docs:
+    # Nightly lane: not on pull requests.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     container: pandoc/extra:3.7
     steps:
@@ -143,11 +148,26 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      # The tests start PostgreSQL from node_modules (EmbeddedPostgres): no Docker for them.
+      - run: npm ci --prefer-offline
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: frontend
-      # Testcontainers and Dev Services use the Docker engine of the runner: no Docker-in-Docker.
-      - run: ./mvnw $MAVEN_CLI_OPTS verify -Dskip.npm
+      # Pull requests run the fast lane: the installation tests (MK-011, minutes each) and the tests
+      # with Keycloak (in Docker) run on main, every night and on tags.
+      - name: Tests
+        env:
+          SLOW: ${{ github.event_name != 'pull_request' }}
+        run: |
+          if [[ "$SLOW" == true ]]; then
+            ./mvnw $MAVEN_CLI_OPTS verify -Dskip.npm -Dtest.groups.excluded=
+          else
+            ./mvnw $MAVEN_CLI_OPTS verify -Dskip.npm -DskipITs
+          fi
       - name: Test report
         if: always()
         uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3 # v5.6.2
@@ -164,22 +184,11 @@ jobs:
           retention-days: 7
 
   # End-to-end tests (e2e/): the installation built by the backend job, started by its launcher on
-  # PostgreSQL 18, driven in Chromium by Playwright. Only the language model is a fake. A
+  # a PostgreSQL 18 of its own, driven in Chromium by Playwright. Only the language model is a fake. A
   # requirement is done when its e2e cases pass here, not only its unit tests.
   e2e:
     needs: backend
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_USER: mosaikit
-          POSTGRES_PASSWORD: mosaikit
-          POSTGRES_DB: mosaikit
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U mosaikit" --health-interval 5s --health-timeout 5s
-          --health-retries 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
@@ -199,10 +208,9 @@ jobs:
       - run: npm run build -w sdk/create-plugin
       - run: ./mvnw $MAVEN_CLI_OPTS -pl sdk/java -am install -DskipTests -Dskip.npm
       - run: npx playwright install --with-deps chromium
+      # The suite starts its own PostgreSQL, from node_modules.
       - name: End-to-end tests
         run: npm run e2e
-        env:
-          E2E_DB_URL: jdbc:postgresql://localhost:5432/mosaikit
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -223,6 +231,8 @@ jobs:
   # pom.xml. Pull requests from forks get no secrets, so the analysis is skipped there.
   sonarqube:
     needs: [backend, frontend]
+    # Nightly lane: not on pull requests (the analysis of main keeps the quality gate).
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -308,6 +318,8 @@ jobs:
   # ---------------------------------------------------------------------------------------------
 
   sbom:
+    # Nightly lane: not on pull requests.
+    if: github.event_name != 'pull_request'
     needs: backend
     runs-on: ubuntu-latest
     steps:

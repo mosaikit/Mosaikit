@@ -1,0 +1,146 @@
+// SPDX-FileCopyrightText: 2026 Massimo Antonini
+// SPDX-License-Identifier: MPL-2.0
+/**
+ * `npm run dev`: the kernel and the shell in development mode (live reload of Java, hot module
+ * replacement of the UI), on a PostgreSQL that starts and stops with it, with a fake language model
+ * for the assistant and sample data ready: nothing to install or start by hand but Java and Node.
+ *
+ *   npm run dev                  # http://localhost:8080, admin / admin-dev-only
+ *   npm run dev -- --reset       # start again from an empty database
+ *
+ * The database lives in .dev/postgres and survives restarts.
+ */
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { startFakeModel } from '../e2e/support/fake-model.ts';
+import { startPostgres } from './postgres.ts';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const WINDOWS = process.platform === 'win32';
+const PORT = Number(process.env.MOSAIKIT_DEV_PORT ?? '8080');
+const DB_PORT = Number(process.env.MOSAIKIT_DEV_DB_PORT ?? '54330');
+const MODEL_PORT = Number(process.env.MOSAIKIT_DEV_MODEL_PORT ?? '18092');
+const ADMIN = { user: 'admin', password: 'admin-dev-only' };
+const PEOPLE = [
+  { email: 'mario.rossi@example.org', name: 'Mario Rossi' },
+  { email: 'anna.bianchi@example.org', name: 'Anna Bianchi' },
+];
+const PEOPLE_PASSWORD = 'dev-password-2026';
+const ORGANIZATION = { slug: 'demo', name: 'Demo' };
+
+const mvnw = join(ROOT, WINDOWS ? 'mvnw.cmd' : 'mvnw');
+const log = (message: string): void => {
+  process.stdout.write(`\x1b[36m[dev]\x1b[0m ${message}\n`);
+};
+
+/** The plugin API must be in the local Maven repository before the dev mode of the kernel. */
+function ensurePluginApi(): void {
+  const groups = ['io/github/mosaikit', 'dev/mosaikit'].map((group) =>
+    join(homedir(), '.m2', 'repository', group, 'mosaikit-kernel-api'),
+  );
+  if (groups.some((group) => existsSync(group) && readdirSync(group).length > 0)) {
+    return;
+  }
+  log('first run: installing the plugin API and the sample plugins (once)…');
+  const built = spawnSync(
+    mvnw,
+    ['-B', '-q', 'install', '-DskipTests', '-Dskip.npm', '-pl', 'kernel', '-am'],
+    {
+      cwd: ROOT,
+      stdio: 'inherit',
+      shell: WINDOWS,
+    },
+  );
+  if (built.status !== 0) {
+    throw new Error('The build of the plugin API failed');
+  }
+}
+
+async function seed(): Promise<void> {
+  const base = `http://localhost:${String(PORT)}`;
+  for (;;) {
+    try {
+      if ((await fetch(`${base}/q/health/ready`)).ok) {
+        break;
+      }
+    } catch {
+      // not yet
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  const admin = `Basic ${Buffer.from(`${ADMIN.user}:${ADMIN.password}`).toString('base64')}`;
+  await fetch(`${base}/api/v1/organizations`, {
+    method: 'POST',
+    headers: { authorization: admin, 'content-type': 'application/json' },
+    body: JSON.stringify({ ...ORGANIZATION, selfRegistration: true }),
+  });
+  for (const person of PEOPLE) {
+    await fetch(`${base}/api/v1/accounts/registrations`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        organization: ORGANIZATION.slug,
+        email: person.email,
+        displayName: person.name,
+        password: PEOPLE_PASSWORD,
+      }),
+    });
+  }
+  log(`ready on ${base}`);
+  log(`  admin / ${ADMIN.password} (platform administrator)`);
+  for (const person of PEOPLE) {
+    log(`  ${person.email} / ${PEOPLE_PASSWORD} (organization "${ORGANIZATION.slug}")`);
+  }
+}
+
+async function main(): Promise<void> {
+  const directory = join(ROOT, '.dev', 'postgres');
+  if (process.argv.includes('--reset')) {
+    rmSync(directory, { recursive: true, force: true });
+    log('database reset');
+  }
+  ensurePluginApi();
+  const database = await startPostgres({ directory, persistent: true, port: DB_PORT });
+  log(`PostgreSQL on 127.0.0.1:${String(database.port)} (.dev/postgres)`);
+  const model = await startFakeModel(MODEL_PORT);
+  log(`fake language model on http://localhost:${String(MODEL_PORT)}/v1`);
+
+  const kernel = spawn(
+    mvnw,
+    [
+      '-pl',
+      'kernel',
+      'quarkus:dev',
+      `-Dquarkus.http.port=${String(PORT)}`,
+      `-Dquarkus.datasource.jdbc.url=${database.url}`,
+      `-Dquarkus.datasource.username=${database.user}`,
+      `-Dquarkus.datasource.password=${database.password}`,
+      `-Dmosaikit.assistant.url=http://localhost:${String(MODEL_PORT)}/v1`,
+      '-Dmosaikit.assistant.model=dev-fake-model',
+    ],
+    { cwd: ROOT, stdio: 'inherit', shell: WINDOWS },
+  );
+  let stopping = false;
+  const stop = async (): Promise<void> => {
+    if (stopping) {
+      return;
+    }
+    stopping = true;
+    kernel.kill();
+    model.close();
+    await database.stop();
+    process.exit(0);
+  };
+  process.on('SIGINT', () => void stop());
+  process.on('SIGTERM', () => void stop());
+  kernel.on('exit', () => void stop());
+  await seed();
+}
+
+main().catch((error: unknown) => {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+});

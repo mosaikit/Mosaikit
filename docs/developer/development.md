@@ -7,12 +7,17 @@
 | JDK | 25 (LTS) |
 | Maven | 3.9.x |
 | Node.js | 24 LTS or 26 |
-| Container runtime | Docker or Podman, for Quarkus Dev Services (PostgreSQL) and the tests with Keycloak |
+| Container runtime | Docker or Podman, only for the tests with Keycloak (`-Dtest.groups.excluded=`) and the Docker distribution; PostgreSQL comes from `node_modules` |
 | Bash, curl, tar | only for the portable archives; on Windows Git for Windows (Git Bash) |
 
 ## Everyday commands
 
 ```bash
+npm ci                                  # once: also brings PostgreSQL 18 (@embedded-postgres)
+npm run dev                             # kernel and shell in development mode, with database and sample data
+npm run check:fast                      # frontend: lint, type check, unit tests
+./mvnw verify -Dskip.npm -DskipITs      # backend: unit and Quarkus tests, without the slow ones
+npm run e2e                             # end-to-end tests on a real installation (after ./mvnw install)
 ./mvnw install                          # everything: frontend and backend checks, tests, target/dist
 ./mvnw install -DskipTests              # without tests (and without the frontend checks)
 ./mvnw verify -Dskip.npm                # backend only; the kernel then has no UI
@@ -29,13 +34,16 @@ which packages the UI), then `npm run check` in the test phase.
 ## Development mode
 
 ```bash
-./mvnw install -DskipTests       # once, to install the plugin API
-./mvnw -pl kernel quarkus:dev
+npm run dev                      # npm run dev -- --reset starts again from an empty database
 ```
+
+`tools/dev.ts` installs the plugin API the first time, starts PostgreSQL 18 from `node_modules`
+(its data in `.dev/postgres`, kept between runs), a fake language model for the assistant, and
+`./mvnw -pl kernel quarkus:dev`; once the kernel is ready it creates the organization `demo` with
+two people and prints how to sign in. Nothing to install or start by hand but Java and Node.
 
 - Kernel and UI on <http://localhost:8080>, with live reload of Java code and hot module
   replacement of the UI (Quinoa runs Vite on `kernel/src/main/webui`).
-- Dev Services start PostgreSQL in a container; Flyway applies the migrations.
 - A platform administrator `admin` / `admin-dev-only` is created at first start.
 - Plugins are read from the `plugins/` directory of the repository. Plugins with Java code, such
   as `sample-notes`, stay `RESTART_REQUIRED`: their code is loaded only by the launcher (next
@@ -101,9 +109,13 @@ curl -u admin -X PUT localhost:8080/api/v1/organizations/<slug>/identity \
 
 - Java unit tests live next to the code (`sdk/java`, `kernel`); the integration tests with
   `@QuarkusTest` and REST Assured are in `kernel/src/test/java/dev/mosaikit/kernel/app`.
-- `JavaPluginInstallationIT` (`kernel`, run by Failsafe in `verify`) installs the package of the
-  sample Java plugin in a real installation and checks MK-011 end to end. It starts PostgreSQL with
-  Testcontainers, or uses a server given with `-Dmosaikit.it.jdbc-url=…` (plus `-username`,
+- The tests need no Docker: `EmbeddedPostgres` (`kernel/src/test/java/dev/mosaikit/testing`)
+  starts PostgreSQL 18 from `node_modules` for every `@QuarkusTest`, in a temporary directory on a
+  free port. The tests with Keycloak are tagged `keycloak` and run only with
+  `-Dtest.groups.excluded=` (they start Keycloak in Docker).
+- `JavaPluginInstallationIT` (`kernel`, run by Failsafe in `verify`, skipped with `-DskipITs`)
+  installs the package of the sample Java plugin in a real installation and checks MK-011 end to
+  end. It starts PostgreSQL the same way, or uses a server given with `-Dmosaikit.it.jdbc-url=…` (plus `-username`,
   `-password`) on which it creates and drops its own database.
 - Frontend tests use Vitest; the JSON Schema of the manifest is tested against every manifest
   in the repository.
@@ -123,10 +135,14 @@ pass in CI (job `e2e`), not only its unit tests.
 
 ## CI
 
-The workflow (`.github/workflows/ci.yml`) runs on the GitHub-hosted runners, on pull requests, on
-`main` and on release tags; for a public repository the runners are free. A newer run of the same
-branch or pull request cancels the running one. The portable archives are built only on tags, or
-on demand on `main` (Actions → CI → Run workflow).
+The workflow (`.github/workflows/ci.yml`) runs on the GitHub-hosted runners in two lanes; for a
+public repository the runners are free. A newer run of the same branch or pull request cancels the
+running one.
+
+| Lane | When | What |
+|---|---|---|
+| Fast | pull requests | frontend checks, unit and Quarkus tests (`-DskipITs`, without Keycloak), end-to-end tests, secrets, SAST |
+| Full | `main`, every night at 02:17 UTC, tags, by hand | everything above, plus the installation tests, the tests with Keycloak, SonarQube, SBOM, dependency scan and the release documents; the portable archives on tags or by hand |
 
 The code is analysed on SonarQube Cloud (organization `mosaikit`, project `mosaikit_mosaikit`):
 the `sonarqube` job runs when the repository secret `SONAR_TOKEN` is defined, with Automatic Analysis

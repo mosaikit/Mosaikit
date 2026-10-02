@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
  */
 @QuarkusTest
 @WithTestResource(KeycloakTestResource.class)
+@Tag("keycloak")
 @Tag("MK-017")
 class MembershipTest {
 
