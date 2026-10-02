@@ -164,6 +164,7 @@ export async function start(
     data: dataCollections(fetch, init.plugin.id),
     // An isolated frame has no real-time channel of its own (MK-031).
     live: NO_LIVE,
+    notify: () => Promise.reject(new Error('Notifications are not sent from an isolated frame')),
   });
   doc.body.replaceChildren(doc.createElement(init.element));
 }

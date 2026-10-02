@@ -49,6 +49,8 @@ HTTP Basic or bearer tokens.
 | `POST /api/v1/accounts/session/remembrance` | signed in, with a password | remember this browser: an HttpOnly cookie signs the person in again for `mosaikit.accounts.remember-for` |
 | `GET /api/v1/shell/plugins` | signed in | frontends of the active plugins, for the shell |
 | `WS /api/v1/live` (WebSocket) | signed in | the real-time channel (MK-031): `?organization=<slug>`; send `{"type": "subscribe", "topic": "…"}`, receive `subscribed`, `refused` or `{"type": "event", "topic", "data"}` |
+| `GET, POST /api/v1/notifications` | signed in, with an organization | the activity feed of the person (`unread`, `notifications`, newest first); notify people of the organization as a plugin (`plugin`, `to` email addresses, `kind`, `title`, `body`, `link`): 202 (MK-038) |
+| `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications/read` | signed in, with an organization | mark one, or every, notification of the person as read |
 | `GET /api/v1/shell/apps` | signed in | the apps the person sees in the app bar, in order, with the pinned ones (MK-030) |
 | `GET, PUT /api/v1/organizations/{slug}/apps` | the administrators of the organization, `platform-admin` | the apps of its app bar: `enabled`, `pinned`, `roles`, in order; `PUT []` goes back to the defaults (audited) |
 | `GET /api/v1/shell/plugins/revision` | signed in | changes when the watched plugins directory changes (`mosaikit.plugins.watch`); 404 when it is not watched |

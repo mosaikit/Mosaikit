@@ -17,17 +17,21 @@ import java.util.List;
  * @param language {@code en} or {@code it}
  * @param hiddenApps the apps the person does not want in the app bar, as {@code <plugin
  *     id>/<app id>}; pinned apps stay (MK-030)
+ * @param mutedNotifications the kinds of notifications the person does not want, as {@code <plugin
+ *     id>/<kind>} (MK-038)
  */
 public record Preferences(
         @Pattern(regexp = "^[a-z0-9][a-z0-9.-]{0,99}$") String theme,
         @Pattern(regexp = "^(system|light|dark|contrast)$") String appearance,
         @Pattern(regexp = "^(en|it)$") String language,
-        @Size(max = 100) List<String> hiddenApps) {
+        @Size(max = 100) List<String> hiddenApps,
+        @Size(max = 100) List<String> mutedNotifications) {
 
     /** No setting chosen. */
-    public static final Preferences NONE = new Preferences(null, null, null, List.of());
+    public static final Preferences NONE = new Preferences(null, null, null, List.of(), List.of());
 
     public Preferences {
         hiddenApps = hiddenApps == null ? List.of() : List.copyOf(hiddenApps);
+        mutedNotifications = mutedNotifications == null ? List.of() : List.copyOf(mutedNotifications);
     }
 }

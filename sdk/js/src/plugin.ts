@@ -46,6 +46,19 @@ export interface PluginContext {
   ) => DataCollection<T>;
   /** Events of the kernel in real time (MK-031); nothing arrives in an isolated frame. */
   readonly live: LiveChannel;
+  /**
+   * Notifies people of the organization, by email address, in their activity feed (MK-038); the
+   * people who turned off the kind receive nothing. Not available in an isolated frame.
+   */
+  readonly notify: (notification: {
+    readonly to: readonly string[];
+    /** Lowercase letters, digits and '-', such as `mention`: people can turn a kind off. */
+    readonly kind: string;
+    readonly title: string;
+    readonly body?: string;
+    /** Where it opens: a path of the shell, such as `/app/notes`. */
+    readonly link?: string;
+  }) => Promise<void>;
 }
 
 /** The module exported by a plugin frontend. */

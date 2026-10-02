@@ -103,6 +103,8 @@ export class MkSettings extends LitElement {
   @property({ attribute: false }) themes: readonly { id: string; title: string }[] = [];
   @property({ attribute: false }) apps: readonly BarApp[] = [];
   @property({ attribute: false }) sections: readonly SettingsSection[] = [];
+  /** The kinds of notifications the person received, as `<plugin id>/<kind>` (MK-038). */
+  @property({ attribute: false }) notificationKinds: readonly string[] = [];
   /** The organization switch of the shell, rendered in the page. */
   @property({ attribute: false }) organizations: unknown = nothing;
   @property() status = '';
@@ -214,6 +216,37 @@ export class MkSettings extends LitElement {
                           >`
                         : nothing
                     }
+                  </li>`;
+                })}
+              </ul>
+            </fieldset>`
+          : nothing
+      }
+      ${
+        this.notificationKinds.length > 0
+          ? html`<fieldset>
+              <legend>${t('Notifications')}</legend>
+              <ul class="apps">
+                ${this.notificationKinds.map((kind) => {
+                  const muted = (preferences.mutedNotifications ?? []).includes(kind);
+                  return html`<li>
+                    <label
+                      ><input
+                        type="checkbox"
+                        .checked=${!muted}
+                        @change=${(event: Event) => {
+                          const wanted = (event.target as HTMLInputElement).checked;
+                          const others = (preferences.mutedNotifications ?? []).filter(
+                            (other) => other !== kind,
+                          );
+                          this.change({
+                            ...preferences,
+                            mutedNotifications: wanted ? others : [...others, kind],
+                          });
+                        }}
+                      />${kind.slice(kind.lastIndexOf('/') + 1)}
+                      <span class="muted">${kind.slice(0, kind.lastIndexOf('/'))}</span></label
+                    >
                   </li>`;
                 })}
               </ul>

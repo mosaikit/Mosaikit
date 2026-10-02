@@ -8,6 +8,10 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The activity feed (MK-038): **Activity** at the top of the app bar, with the unread count pushed
+  on the real-time channel; plugins notify people with `context.notify` or `Notifications` of
+  `kernel-api` (`/api/v1/notifications`); people turn kinds of notifications off in their settings.
+
 - The real-time channel (MK-031, ADR-0033): one WebSocket per page (`/api/v1/live`), events sent
   with PostgreSQL NOTIFY when a transaction commits; plugins subscribe with `context.live` and
   `collection.onChange` and publish with `LiveEvents` of `kernel-api`; the kernel refuses topics the

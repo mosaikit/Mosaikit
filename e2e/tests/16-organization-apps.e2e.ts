@@ -47,7 +47,7 @@ test.describe('MK-030 Apps of the app bar per organization and role', () => {
     const bar = apps(mario);
     await expect(bar.getByRole('link', { name: 'Notes', exact: true })).toHaveCount(0);
     const titles = await bar.getByRole('link').allInnerTexts();
-    expect(titles.slice(0, 2)).toEqual(['Home', 'Activities']);
+    expect(titles.slice(0, 3)).toEqual(['Activity', 'Home', 'Activities']);
     // The API of the app that is off refuses the people of the organization.
     const notes = await api(MARIO, '/api/v1/p/sample-notes/notes');
     expect(notes.status).toBe(403);

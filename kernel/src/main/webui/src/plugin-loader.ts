@@ -85,6 +85,16 @@ export class PluginLoader {
         fetch: this.request,
         data: dataCollections(this.request, plugin.id, this.live),
         live: this.live,
+        notify: async (notification) => {
+          const response = await this.request('/api/v1/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plugin: plugin.id, ...notification }),
+          });
+          if (!response.ok) {
+            throw new Error(`The notification was not sent (${String(response.status)})`);
+          }
+        },
       });
       return { pluginId: plugin.id, loaded: true };
     } catch (error) {
