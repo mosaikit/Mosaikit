@@ -42,6 +42,7 @@ HTTP Basic or bearer tokens.
 | `GET /api/v1/accounts/session` | anyone | the account of the session of the shell, or 204 without one |
 | `DELETE /api/v1/accounts/session` | anyone | end the session of the shell |
 | `GET /api/v1/shell/plugins` | signed in | frontends of the active plugins, for the shell |
+| `GET /api/v1/shell/plugins/revision` | signed in | changes when the watched plugins directory changes (`mosaikit.plugins.watch`); 404 when it is not watched |
 | `GET /api/v1/plugin-assets/{id}/{path}` | anyone | web files of active plugins |
 | `GET /api/v1/plugins` | `platform-admin` | every plugin found, with status, problems and publisher |
 | `GET, POST /api/v1/organizations` | `platform-admin` | list and create organizations (with `federation`, their realm) |

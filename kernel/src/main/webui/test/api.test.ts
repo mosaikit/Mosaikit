@@ -230,4 +230,15 @@ describe('KernelClient (MK-008)', () => {
       messages: [{ role: 'user', content: 'Ciao' }],
     });
   });
+
+  it('gives the revision of the plugins only when the kernel watches them', async () => {
+    const watched = new KernelClient(() => Promise.resolve(json(200, { revision: 7 })), memory());
+    const unwatched = new KernelClient(
+      () => Promise.resolve(new Response(null, { status: 404 })),
+      memory(),
+    );
+
+    expect(await watched.pluginRevision()).toBe(7);
+    expect(await unwatched.pluginRevision()).toBeUndefined();
+  });
 });

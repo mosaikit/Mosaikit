@@ -12,6 +12,7 @@ import jakarta.enterprise.event.Observes;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jboss.logging.Logger;
 
@@ -32,6 +33,7 @@ public class PluginRegistry {
     private final String signatures;
     private final Event<PluginsLoaded> loaded;
     private final AtomicReference<List<InstalledPlugin>> plugins = new AtomicReference<>(List.of());
+    private final AtomicLong revision = new AtomicLong();
 
     public PluginRegistry(KernelConfig config, KernelVersion kernelVersion, Event<PluginsLoaded> loaded) {
         this.directory = config.plugins().directory().toAbsolutePath().normalize();
@@ -65,10 +67,16 @@ public class PluginRegistry {
         List<InstalledPlugin> found =
                 new PluginCatalog(kernelVersion, backendCheck, trust).scan(directory, packagesDirectory);
         plugins.set(found);
+        revision.incrementAndGet();
         LOG.infof("Plugins in %s: %d found, %d active", directory, found.size(), active().size());
         found.stream()
                 .filter(plugin -> !plugin.isActive())
                 .forEach(plugin -> LOG.warnf("Plugin %s is %s: %s", plugin.key(), plugin.status(), plugin.problems()));
+    }
+
+    /** How many times the installation directory was read: changes after every {@link #reload()}. */
+    public long revision() {
+        return revision.get();
     }
 
     /** Directory of the installed plugins. */

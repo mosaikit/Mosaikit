@@ -14,6 +14,9 @@ project follows [Semantic Versioning](https://semver.org/).
   the service `data`. Such a plugin is active as soon as it is installed, without a restart, and
   the shell loads it without a reload. New sample `sample-todo`; `create-mosaikit-plugin` without
   `--backend` writes one.
+- In development mode the kernel watches the plugins directory (`mosaikit.plugins.watch`): a
+  changed frontend or a new plugin without Java code shows at once, as the shell reloads its page
+  by itself.
 
 ### Changed
 

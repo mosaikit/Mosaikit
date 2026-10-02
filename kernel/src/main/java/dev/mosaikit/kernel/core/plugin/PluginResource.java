@@ -10,7 +10,9 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.util.List;
+import java.util.Map;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
@@ -22,9 +24,11 @@ public class PluginResource {
 
     private final PluginRegistry registry;
     private final boolean isolateUnverified;
+    private final boolean watched;
 
     public PluginResource(PluginRegistry registry, KernelConfig config) {
         this.registry = registry;
+        this.watched = config.plugins().watch();
         this.isolateUnverified =
                 FrontendPluginView.isolatesUnverified(config.plugins().unverifiedFrontends());
     }
@@ -48,5 +52,19 @@ public class PluginResource {
                                 .map(frontend -> FrontendPluginView.of(
                                         manifest, frontend, isolateUnverified && !plugin.isVerified()))))
                 .toList();
+    }
+
+    @GET
+    @Path("/shell/plugins/revision")
+    @Authenticated
+    @Operation(
+            summary = "Get the revision of the installed plugins, when the plugins directory is watched",
+            description = "404 when it is not watched (mosaikit.plugins.watch). The shell reloads its page when"
+                    + " the revision changes.")
+    public Response revision() {
+        if (!watched) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(Map.of("revision", registry.revision())).build();
     }
 }

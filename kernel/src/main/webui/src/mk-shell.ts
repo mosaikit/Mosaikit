@@ -19,6 +19,8 @@ import { PluginLoader, type LoadResult } from './plugin-loader.js';
 
 /** How often the shell looks for actions proposed by assistants. */
 const DRAFT_REFRESH_MS = 20_000;
+/** How often the shell asks whether the watched plugins changed (development mode). */
+const PLUGIN_WATCH_MS = 1_000;
 
 /** Route of the administration of plugins, for platform administrators (MK-022). */
 const ADMIN_PLUGINS = '/admin/plugins';
@@ -183,6 +185,7 @@ export class MkShell extends LitElement {
   @state() private drafts: ActionDraft[] = [];
   @state() private assistantModel: string | undefined;
   private draftTimer: ReturnType<typeof setInterval> | undefined;
+  private watchTimer: ReturnType<typeof setInterval> | undefined;
   @state() private busy = false;
   /** Email entered at the first step; the password step follows when there is no realm. */
   @state() private email: string | undefined;
@@ -223,6 +226,7 @@ export class MkShell extends LitElement {
 
   override disconnectedCallback(): void {
     clearInterval(this.draftTimer);
+    clearInterval(this.watchTimer);
     window.removeEventListener('popstate', this.onPopState);
     super.disconnectedCallback();
   }
@@ -569,6 +573,36 @@ export class MkShell extends LitElement {
     await this.loadAssistant();
     clearInterval(this.draftTimer);
     this.draftTimer = setInterval(() => void this.loadDrafts(), DRAFT_REFRESH_MS);
+    await this.watchPlugins();
+  }
+
+  /**
+   * When the kernel watches the plugins directory, follows its revision: a changed module cannot
+   * replace the custom elements it defined, so the shell reloads the page, which keeps the session
+   * of a local account. With the tokens of a realm, held in memory only, it loads the new plugins.
+   */
+  private async watchPlugins(): Promise<void> {
+    clearInterval(this.watchTimer);
+    let revision = await this.client.pluginRevision().catch(() => undefined);
+    if (revision === undefined) {
+      return;
+    }
+    this.watchTimer = setInterval(() => {
+      void this.client.pluginRevision().then(
+        (current) => {
+          if (current === undefined || current === revision) {
+            return;
+          }
+          revision = current;
+          if (this.session) {
+            void this.reloadPlugins();
+          } else {
+            location.reload();
+          }
+        },
+        () => undefined,
+      );
+    }, PLUGIN_WATCH_MS);
   }
 
   /**
@@ -604,6 +638,7 @@ export class MkShell extends LitElement {
   private clearSession(): void {
     clearTimeout(this.refreshTimer);
     clearInterval(this.draftTimer);
+    clearInterval(this.watchTimer);
     this.drafts = [];
     this.session = undefined;
     void this.client.signOut();
