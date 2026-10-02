@@ -14,5 +14,11 @@ public final class Roles {
     /** Member of an organization. */
     public static final String ORGANIZATION_USER = "organization-user";
 
+    /**
+     * Guest of an organization (MK-032): a person of another organization, admitted to some teams
+     * only; sees those teams and nothing else of the organization.
+     */
+    public static final String ORGANIZATION_GUEST = "organization-guest";
+
     private Roles() {}
 }

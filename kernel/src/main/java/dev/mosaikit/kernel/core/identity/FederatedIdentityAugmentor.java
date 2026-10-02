@@ -79,6 +79,9 @@ public class FederatedIdentityAugmentor implements SecurityIdentityAugmentor {
                         OrganizationAccess.ORGANIZATION_ATTRIBUTE,
                         organization.id().toString())
                 .addAttribute(OrganizationAccess.SLUG_ATTRIBUTE, organization.slug())
+                .addAttribute(
+                        OrganizationAccess.ACCOUNT_ATTRIBUTE,
+                        member.account().getId().toString())
                 .build();
     }
 

@@ -41,6 +41,43 @@ describe('dataCollections (ADR-0031)', () => {
     expect(fetch.mock.calls[2]?.[1]?.body).toBe('{"title":"Paint"}');
   });
 
+  it('reads and writes the documents of a team (MK-032)', async () => {
+    const fetch = answering(200, []);
+    const notes = dataCollections(fetch, 'p')('notes', { team: 't 1' });
+
+    await notes.list();
+    await notes.create({ text: 'Hello' });
+
+    expect(fetch.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/data/p/notes?team=t%201&offset=0&limit=100',
+      '/api/v1/data/p/notes?team=t%201',
+    ]);
+  });
+
+  it('tells a view only the changes of its team, or of the organization', () => {
+    const handlers: ((data: unknown) => void)[] = [];
+    const live = {
+      subscribe: (_topic: string, handler: (data: unknown) => void) => {
+        handlers.push(handler);
+        return () => undefined;
+      },
+    };
+    const fetch = answering(200, []);
+    const ofTeam = vi.fn();
+    const ofOrganization = vi.fn();
+    dataCollections(fetch, 'p', live)('notes', { team: 't1' }).onChange(ofTeam);
+    dataCollections(fetch, 'p', live)('notes').onChange(ofOrganization);
+
+    for (const handler of handlers) {
+      handler({ id: 'a', action: 'created', team: 't1' });
+      handler({ id: 'b', action: 'created', team: 't2' });
+      handler({ id: 'c', action: 'deleted' });
+    }
+
+    expect(ofTeam.mock.calls).toEqual([[{ id: 'a', action: 'created' }]]);
+    expect(ofOrganization.mock.calls).toEqual([[{ id: 'c', action: 'deleted' }]]);
+  });
+
   it('removes without reading a body', async () => {
     const fetch = answering(204);
 

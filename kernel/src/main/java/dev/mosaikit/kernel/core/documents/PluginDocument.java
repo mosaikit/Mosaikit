@@ -29,6 +29,10 @@ public class PluginDocument {
     @Column(nullable = false, updatable = false)
     private String collection;
 
+    /** The team the document is shared with, or {@code null} for the whole organization (MK-032). */
+    @Column(name = "team_id", updatable = false)
+    private UUID teamId;
+
     /** The document, as JSON text. */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false)
@@ -54,8 +58,15 @@ public class PluginDocument {
     protected PluginDocument() {}
 
     public PluginDocument(
-            UUID organizationId, String pluginId, String collection, String data, String author, Instant now) {
+            UUID organizationId,
+            String pluginId,
+            String collection,
+            UUID teamId,
+            String data,
+            String author,
+            Instant now) {
         this.id = UUID.randomUUID();
+        this.teamId = teamId;
         this.organizationId = organizationId;
         this.pluginId = pluginId;
         this.collection = collection;
@@ -87,6 +98,10 @@ public class PluginDocument {
 
     public String getCollection() {
         return collection;
+    }
+
+    public UUID getTeamId() {
+        return teamId;
     }
 
     public String getData() {

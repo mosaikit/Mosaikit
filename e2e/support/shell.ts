@@ -48,18 +48,19 @@ export async function restart(settings?: Settings): Promise<string> {
   return log;
 }
 
-/** Calls the API of the kernel as a person, in the organization of the tests. */
+/** Calls the API of the kernel as a person, in the organization of the tests or in another one. */
 export async function api(
   person: Person,
   path: string,
   init: RequestInit = {},
+  organization: string = ORGANIZATION.slug,
 ): Promise<{ status: number; body: unknown }> {
   const headers = new Headers(init.headers);
   headers.set(
     'authorization',
     `Basic ${Buffer.from(`${person.user}:${person.password}`).toString('base64')}`,
   );
-  headers.set('X-Mosaikit-Organization', ORGANIZATION.slug);
+  headers.set('X-Mosaikit-Organization', organization);
   headers.set('content-type', headers.get('content-type') ?? 'application/json');
   const response = await fetch(BASE_URL + path, { ...init, headers });
   const text = await response.text();

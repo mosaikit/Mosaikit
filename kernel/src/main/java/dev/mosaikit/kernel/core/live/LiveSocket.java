@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.mosaikit.kernel.core.account.AccountDirectory;
 import dev.mosaikit.kernel.core.identity.RequestOrganization;
+import dev.mosaikit.kernel.core.teams.TeamService;
 import io.quarkus.security.Authenticated;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.websockets.next.OnClose;
@@ -55,7 +56,7 @@ public class LiveSocket {
     @OnOpen
     void open() {
         UUID account = accounts.idOf(identity.getPrincipal().getName()).orElseThrow();
-        pages.open(connection.id(), account, RequestOrganization.of(identity));
+        pages.open(connection.id(), account, RequestOrganization.of(identity), RequestOrganization.guest(identity));
     }
 
     @OnTextMessage
@@ -99,20 +100,23 @@ public class LiveSocket {
     public static class LivePages {
 
         /** A page connected to the channel. */
-        record Page(String connection, UUID account, Optional<UUID> organization, Set<String> topics) {}
+        record Page(String connection, UUID account, Optional<UUID> organization, boolean guest, Set<String> topics) {}
 
         private final Map<String, Page> pages = new ConcurrentHashMap<>();
         private final OpenConnections connections;
         private final ObjectMapper json;
 
-        public LivePages(OpenConnections connections, ObjectMapper json, LiveBus bus) {
+        private final TeamService teams;
+
+        public LivePages(OpenConnections connections, ObjectMapper json, LiveBus bus, TeamService teams) {
+            this.teams = teams;
             this.connections = connections;
             this.json = json;
             bus.listen(this::deliver);
         }
 
-        void open(String connection, UUID account, Optional<UUID> organization) {
-            pages.put(connection, new Page(connection, account, organization, ConcurrentHashMap.newKeySet()));
+        void open(String connection, UUID account, Optional<UUID> organization, boolean guest) {
+            pages.put(connection, new Page(connection, account, organization, guest, ConcurrentHashMap.newKeySet()));
         }
 
         Optional<Page> get(String connection) {
@@ -129,9 +133,14 @@ public class LiveSocket {
         }
 
         private void deliver(LiveEvent event) {
+            if (pages.values().stream().noneMatch(page -> page.topics().contains(event.topic()))) {
+                return;
+            }
+            // The people of the team of the event, read once for every page.
+            Set<UUID> team = event.team() == null ? Set.of() : teams.accountsOf(event.team());
             for (Page page : pages.values()) {
                 boolean organization = page.organization()
-                        .filter(id -> event.reaches(id, page.account()))
+                        .filter(id -> event.reaches(id, page.account(), page.guest(), team))
                         .isPresent();
                 boolean personal = LiveTopics.NOTIFICATIONS.equals(event.topic())
                         && event.audience() != null

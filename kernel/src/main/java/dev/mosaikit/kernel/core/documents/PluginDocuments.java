@@ -26,9 +26,16 @@ public interface PluginDocuments {
     @Query("""
             from PluginDocument d
             where d.organizationId = :organizationId and d.pluginId = :pluginId
-              and d.collection = :collection
+              and d.collection = :collection and d.teamId is null
             order by d.updatedAt desc, d.id""")
     List<PluginDocument> list(UUID organizationId, String pluginId, String collection, Limit limit);
+
+    @Query("""
+            from PluginDocument d
+            where d.organizationId = :organizationId and d.pluginId = :pluginId
+              and d.collection = :collection and d.teamId = :teamId
+            order by d.updatedAt desc, d.id""")
+    List<PluginDocument> listOfTeam(UUID organizationId, String pluginId, String collection, UUID teamId, Limit limit);
 
     @Query("""
             select count(d) from PluginDocument d

@@ -8,6 +8,11 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Teams (MK-032): groups of an organization with owners, members and guests of other organizations
+  (`/api/v1/teams`, `Teams` of `kernel-api`, audited); documents of the data API shared with a team
+  (`context.data(collection, { team })`), readable only by its people under row-level security;
+  guests see only their teams.
+
 - The activity feed (MK-038): **Activity** at the top of the app bar, with the unread count pushed
   on the real-time channel; plugins notify people with `context.notify` or `Notifications` of
   `kernel-api` (`/api/v1/notifications`); people turn kinds of notifications off in their settings.

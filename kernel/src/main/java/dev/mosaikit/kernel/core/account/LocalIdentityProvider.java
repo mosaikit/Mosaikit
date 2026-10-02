@@ -80,7 +80,9 @@ public class LocalIdentityProvider implements IdentityProvider<UsernamePasswordA
     SecurityIdentity identityOf(UserAccount found, String requested, String host) {
         var builder = QuarkusSecurityIdentity.builder()
                 .setPrincipal(new QuarkusPrincipal(found.getUsername()))
-                .addRoles(found.getRoles());
+                .addRoles(found.getRoles())
+                .addAttribute(
+                        OrganizationAccess.ACCOUNT_ATTRIBUTE, found.getId().toString());
         // The roles in an organization count only for the organization the request acts on (MK-017).
         access.forPassword(found.getId(), requested, host)
                 .ifPresent(organization -> builder.addRoles(organization.roles())

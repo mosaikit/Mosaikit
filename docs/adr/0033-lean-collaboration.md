@@ -26,7 +26,9 @@ Mosaikit, and the way of working is lean (ADR-0031).
 - **Collaboration as frontend-only plugins.** `app-chat` and `app-teams` are plugins without a
   backend: their messages and posts are documents of the data API, which gains sharing with a team
   or with some people, enforced by row-level security; mentions and replies use the notifications of
-  the kernel (MK-038).
+  the kernel (MK-038). Sharing with a team came with MK-032; a guest is a member of the organization
+  with the role `organization-guest` only, kept by the kernel to the teams where they were added.
+  Sharing with some people comes with the chats (MK-036).
 - **In this repository for now.** `app-chat` and `app-teams` live in `plugins/` until their API is
   stable, so that their end-to-end tests run with the changes of the kernel they need; they move to
   repositories of their own (ADR-0024) afterwards.
