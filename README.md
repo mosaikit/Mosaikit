@@ -66,7 +66,7 @@ Open <http://localhost:8080> and sign in:
 | platform administrator | `admin` | `admin-dev-only` |
 | people of the organization `demo` | `mario.rossi@example.org`, `anna.bianchi@example.org` | `dev-password-2026` |
 
-`npm run dev` installs the plugin API the first time, starts PostgreSQL (its data in
+`npm run dev` builds the plugin API (a few seconds), starts PostgreSQL (its data in
 `.dev/postgres`, kept between runs; `npm run dev -- --reset` starts again from an empty database)
 and a fake language model for the assistant, then runs the kernel with `quarkus:dev`:
 
