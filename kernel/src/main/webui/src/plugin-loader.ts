@@ -3,6 +3,8 @@
 import { language } from './i18n.js';
 import {
   dataCollections,
+  NO_LIVE,
+  type LiveChannel,
   EventBus,
   contributionsTo,
   isMosaikitPlugin,
@@ -29,6 +31,7 @@ export class PluginLoader {
     reportError: (message: string, error: unknown) => void = (message, error) => {
       console.error(message, error);
     },
+    private readonly live: LiveChannel = NO_LIVE,
   ) {
     this.events = new EventBus((error, topic) => {
       reportError(`A handler of '${topic}' failed`, error);
@@ -80,7 +83,8 @@ export class PluginLoader {
         },
         user,
         fetch: this.request,
-        data: dataCollections(this.request, plugin.id),
+        data: dataCollections(this.request, plugin.id, this.live),
+        live: this.live,
       });
       return { pluginId: plugin.id, loaded: true };
     } catch (error) {

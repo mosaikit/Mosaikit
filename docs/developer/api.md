@@ -48,6 +48,7 @@ HTTP Basic or bearer tokens.
 | `DELETE /api/v1/accounts/session` | anyone | end the session of the shell, and forget the browser if it was remembered |
 | `POST /api/v1/accounts/session/remembrance` | signed in, with a password | remember this browser: an HttpOnly cookie signs the person in again for `mosaikit.accounts.remember-for` |
 | `GET /api/v1/shell/plugins` | signed in | frontends of the active plugins, for the shell |
+| `WS /api/v1/live` (WebSocket) | signed in | the real-time channel (MK-031): `?organization=<slug>`; send `{"type": "subscribe", "topic": "…"}`, receive `subscribed`, `refused` or `{"type": "event", "topic", "data"}` |
 | `GET /api/v1/shell/apps` | signed in | the apps the person sees in the app bar, in order, with the pinned ones (MK-030) |
 | `GET, PUT /api/v1/organizations/{slug}/apps` | the administrators of the organization, `platform-admin` | the apps of its app bar: `enabled`, `pinned`, `roles`, in order; `PUT []` goes back to the defaults (audited) |
 | `GET /api/v1/shell/plugins/revision` | signed in | changes when the watched plugins directory changes (`mosaikit.plugins.watch`); 404 when it is not watched |

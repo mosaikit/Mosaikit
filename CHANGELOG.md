@@ -8,6 +8,11 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The real-time channel (MK-031, ADR-0033): one WebSocket per page (`/api/v1/live`), events sent
+  with PostgreSQL NOTIFY when a transaction commits; plugins subscribe with `context.live` and
+  `collection.onChange` and publish with `LiveEvents` of `kernel-api`; the kernel refuses topics the
+  person may not read. The sample To do shows the changes of colleagues at once.
+
 - The shell is an installable progressive web app (MK-029): a manifest with icons, a service
   worker that keeps the shell and its files, and a notice when the network is missing instead of
   an error page.

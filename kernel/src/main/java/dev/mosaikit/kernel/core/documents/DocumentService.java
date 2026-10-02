@@ -10,6 +10,8 @@ import dev.mosaikit.kernel.api.plugin.PluginManifest;
 import dev.mosaikit.kernel.core.error.ConflictException;
 import dev.mosaikit.kernel.core.error.InvalidInputException;
 import dev.mosaikit.kernel.core.error.ResourceNotFoundException;
+import dev.mosaikit.kernel.core.live.LiveBus;
+import dev.mosaikit.kernel.core.live.LiveEvent;
 import dev.mosaikit.kernel.core.plugin.InstalledPlugin;
 import dev.mosaikit.kernel.core.plugin.PluginRegistry;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -20,6 +22,7 @@ import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -46,6 +49,7 @@ public class DocumentService {
     private final SecurityIdentity identity;
     private final ObjectMapper json;
     private final Clock clock;
+    private final LiveBus live;
 
     @Inject
     public DocumentService(
@@ -53,8 +57,9 @@ public class DocumentService {
             PluginRegistry registry,
             CurrentOrganization organization,
             SecurityIdentity identity,
-            ObjectMapper json) {
-        this(documents, registry, organization, identity, json, Clock.systemUTC());
+            ObjectMapper json,
+            LiveBus live) {
+        this(documents, registry, organization, identity, json, live, Clock.systemUTC());
     }
 
     DocumentService(
@@ -63,7 +68,9 @@ public class DocumentService {
             CurrentOrganization organization,
             SecurityIdentity identity,
             ObjectMapper json,
+            LiveBus live,
             Clock clock) {
+        this.live = live;
         this.documents = documents;
         this.registry = registry;
         this.organization = organization;
@@ -96,6 +103,7 @@ public class DocumentService {
         }
         PluginDocument document = new PluginDocument(org, plugin, collection, text, author(), clock.instant());
         documents.insert(document);
+        changed(plugin, collection, document.getId(), "created");
         return view(document);
     }
 
@@ -112,11 +120,25 @@ public class DocumentService {
         }
         document.replace(checked(data), author(), clock.instant());
         documents.update(document);
+        changed(plugin, collection, id, "replaced");
         return view(document);
     }
 
     public void delete(String plugin, String collection, UUID id) {
         documents.delete(find(plugin, collection, id));
+        changed(plugin, collection, id, "deleted");
+    }
+
+    /**
+     * Tells the pages that subscribed to the collection, when the transaction commits (MK-031): only
+     * which document changed, so that each page reads it again with its own rights.
+     */
+    private void changed(String plugin, String collection, UUID id, String action) {
+        live.publish(new LiveEvent(
+                "documents." + plugin + "." + collection,
+                organization.require(),
+                null,
+                Map.of("id", id.toString(), "action", action)));
     }
 
     private PluginDocument find(String plugin, String collection, UUID id) {
