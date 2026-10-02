@@ -47,6 +47,9 @@ const ADMIN_PAGES = [
 export class MkShell extends LitElement {
   static override readonly styles = css`
     :host {
+      display: block;
+    }
+    .frame {
       display: grid;
       grid-template-rows: 48px 1fr;
       grid-template-columns: 72px minmax(0, 1fr);
@@ -74,7 +77,6 @@ export class MkShell extends LitElement {
     .brand .version {
       font-weight: 400;
       font-size: 12px;
-      opacity: 0.8;
     }
     .search {
       position: relative;
@@ -89,10 +91,13 @@ export class MkShell extends LitElement {
       padding: 0 12px 0 34px;
       border: 0;
       border-radius: var(--mk-radius);
-      background: rgb(255 255 255 / 0.92);
+      background: #ffffff;
       color: #1a1a1a;
       font: inherit;
       font-size: 14px;
+    }
+    .search input::placeholder {
+      color: #545454;
     }
     .search svg {
       position: absolute;
@@ -131,7 +136,8 @@ export class MkShell extends LitElement {
       border-radius: 50%;
       font-size: 13px;
       font-weight: 700;
-      background: rgb(255 255 255 / 0.25);
+      /* Darker than the bar, so that the white initials stay readable (WCAG 2.1 AA). */
+      background: rgb(0 0 0 / 0.35);
       color: #ffffff;
     }
     .account {
@@ -284,7 +290,7 @@ export class MkShell extends LitElement {
       background: var(--mk-surface);
     }
     @media (max-width: 640px) {
-      :host {
+      .frame {
         grid-template-rows: 48px 1fr 60px;
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas: 'top' 'main' 'rail';
@@ -523,7 +529,7 @@ export class MkShell extends LitElement {
     if (!this.account) {
       return this.renderSignIn();
     }
-    return html`
+    return html`<div class="frame" @keydown=${this.keyFrame}>
       <header class="top">
         <span class="brand"
           >${mark}<span class="name">${this.info?.name ?? 'Mosaikit'}</span
@@ -532,7 +538,7 @@ export class MkShell extends LitElement {
         ${this.renderSearch()} ${this.renderAccount()}
       </header>
       ${this.renderWorkspace()}
-    `;
+    </div>`;
   }
 
   /** The search of the top bar: apps and pages by title, until the global search (MK-040). */
@@ -596,7 +602,7 @@ export class MkShell extends LitElement {
       </button>
       ${
         this.menuOpen
-          ? html`<div class="menu" role="dialog" aria-label="Account" @keydown=${this.keyMenu}>
+          ? html`<div class="menu" role="dialog" aria-label="Account">
               <div class="who">
                 <span class="avatar" aria-hidden="true">${initials(name)}</span>
                 <span><strong>${name}</strong><span class="muted">${account.username}</span></span>
@@ -651,12 +657,16 @@ export class MkShell extends LitElement {
     this.searchText = '';
   };
 
-  private readonly toggleMenu = (): void => {
+  private readonly toggleMenu = async (): Promise<void> => {
     this.menuOpen = !this.menuOpen;
+    if (this.menuOpen) {
+      await this.updateComplete;
+      this.renderRoot.querySelector<HTMLElement>('.menu select, .menu button')?.focus();
+    }
   };
 
-  private readonly keyMenu = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') {
+  private readonly keyFrame = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape' && this.menuOpen) {
       this.menuOpen = false;
       this.renderRoot.querySelector<HTMLButtonElement>('.account')?.focus();
     }

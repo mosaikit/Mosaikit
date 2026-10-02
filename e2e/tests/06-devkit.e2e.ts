@@ -50,7 +50,7 @@ test.describe('MK-023 Devkit for third-party plugin developers', () => {
     await signIn(page, MARIO);
     await openApp(page, 'Traffic');
     const item = unique('Semaforo via Roma');
-    await page.locator('mk-shell input').first().fill(item);
+    await page.locator('mk-shell #app-host input').first().fill(item);
     await page.getByRole('button', { name: 'Add' }).click();
     await expect(page.getByText(item)).toBeVisible();
 
@@ -58,7 +58,7 @@ test.describe('MK-023 Devkit for third-party plugin developers', () => {
     await expect(page.getByRole('heading', { name: 'Signage' })).toBeVisible();
     // Without a backend the items are documents that the kernel keeps (ADR-0031).
     const sign = unique('Cartello piazza Duomo');
-    await page.locator('mk-shell input').first().fill(sign);
+    await page.locator('mk-shell #app-host input').first().fill(sign);
     await page.getByRole('button', { name: 'Add' }).click();
     await expect(page.getByText(sign)).toBeVisible();
     await page.reload();

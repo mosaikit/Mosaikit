@@ -12,7 +12,11 @@ async function expectAccessible(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
-  expect(results.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  expect(
+    results.violations.map(
+      (v) => `${v.id}: ${v.help} (${v.nodes.map((node) => node.target.join(' ')).join(', ')})`,
+    ),
+  ).toEqual([]);
 }
 
 test.describe('MK-025 Shell with app bar, top bar and work area', () => {
