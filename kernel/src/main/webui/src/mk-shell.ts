@@ -461,6 +461,8 @@ export class MkShell extends LitElement {
   /** The personal settings of the signed-in person (MK-027). */
   @state() private preferences: Preferences | undefined;
   @state() private settingsStatus = '';
+  private saves = 0;
+  private saving: Promise<void> = Promise.resolve();
   @state() private shellLanguage = browserLanguage();
   /** The page of the sign-in: signing in, creating an account, or waiting for the confirmation. */
   @state() private signInMode: 'sign-in' | 'register' | 'sent' = 'sign-in';
@@ -783,19 +785,31 @@ export class MkShell extends LitElement {
     }
   }
 
-  private readonly savePreferences = async (event: CustomEvent<Preferences>): Promise<void> => {
+  /**
+   * Applies a change at once and saves it. Saves go one after the other, so that the kernel keeps the
+   * last change, and only the answer to the last one replaces what the page shows: an older answer
+   * arriving late would undo a newer choice.
+   */
+  private readonly savePreferences = (event: CustomEvent<Preferences>): Promise<void> => {
     const wanted = event.detail;
+    const save = ++this.saves;
     this.preferences = wanted;
     this.entries = this.visibleEntries(launcherEntries(this.plugins));
     this.applyAppearance();
-    try {
-      this.preferences = await this.client.changePreferences(wanted);
-      this.settingsStatus = t('Saved.');
-    } catch (error) {
-      this.settingsStatus = t('Not saved: {reason}', {
-        reason: error instanceof Error ? error.message : String(error),
-      });
-    }
+    this.saving = this.saving.then(async () => {
+      try {
+        const saved = await this.client.changePreferences(wanted);
+        if (save === this.saves) {
+          this.preferences = saved;
+          this.settingsStatus = t('Saved.');
+        }
+      } catch (error) {
+        this.settingsStatus = t('Not saved: {reason}', {
+          reason: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+    return this.saving;
   };
 
   /** The sign-in page (mk-sign-in), which tells the shell what the person asked for. */
