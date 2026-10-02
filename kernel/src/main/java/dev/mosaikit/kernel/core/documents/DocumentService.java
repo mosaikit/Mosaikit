@@ -5,15 +5,17 @@ package dev.mosaikit.kernel.core.documents;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.mosaikit.kernel.api.context.CurrentOrganization;
 import dev.mosaikit.kernel.api.plugin.PluginManifest;
 import dev.mosaikit.kernel.core.error.ConflictException;
+import dev.mosaikit.kernel.core.error.ForbiddenOperationException;
 import dev.mosaikit.kernel.core.error.InvalidInputException;
 import dev.mosaikit.kernel.core.error.ResourceNotFoundException;
+import dev.mosaikit.kernel.core.identity.RequestOrganization;
 import dev.mosaikit.kernel.core.live.LiveBus;
 import dev.mosaikit.kernel.core.live.LiveEvent;
 import dev.mosaikit.kernel.core.plugin.InstalledPlugin;
 import dev.mosaikit.kernel.core.plugin.PluginRegistry;
+import dev.mosaikit.kernel.core.teams.TeamService;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.data.Limit;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,6 +23,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,7 +48,8 @@ public class DocumentService {
 
     private final PluginDocuments documents;
     private final PluginRegistry registry;
-    private final CurrentOrganization organization;
+    private final RequestOrganization organization;
+    private final TeamService teams;
     private final SecurityIdentity identity;
     private final ObjectMapper json;
     private final Clock clock;
@@ -55,22 +59,25 @@ public class DocumentService {
     public DocumentService(
             PluginDocuments documents,
             PluginRegistry registry,
-            CurrentOrganization organization,
+            RequestOrganization organization,
             SecurityIdentity identity,
             ObjectMapper json,
-            LiveBus live) {
-        this(documents, registry, organization, identity, json, live, Clock.systemUTC());
+            LiveBus live,
+            TeamService teams) {
+        this(documents, registry, organization, identity, json, live, teams, Clock.systemUTC());
     }
 
     DocumentService(
             PluginDocuments documents,
             PluginRegistry registry,
-            CurrentOrganization organization,
+            RequestOrganization organization,
             SecurityIdentity identity,
             ObjectMapper json,
             LiveBus live,
+            TeamService teams,
             Clock clock) {
         this.live = live;
+        this.teams = teams;
         this.documents = documents;
         this.registry = registry;
         this.organization = organization;
@@ -79,12 +86,26 @@ public class DocumentService {
         this.clock = clock;
     }
 
-    public List<DocumentView> list(String plugin, String collection, int offset, int limit) {
+    /**
+     * The documents of a collection, newest first: those of the whole organization, or those shared
+     * with a team of the person (MK-032). A guest of the organization has only those of its teams.
+     */
+    public List<DocumentView> list(String plugin, String collection, UUID team, int offset, int limit) {
         UUID org = organization.require();
         declared(plugin, collection);
         int size = Math.clamp(limit, 1, MAX_PAGE);
         int start = Math.max(offset, 0);
-        return documents.list(org, plugin, collection, Limit.range(start + 1L, start + (long) size)).stream()
+        Limit page = Limit.range(start + 1L, start + (long) size);
+        if (team != null) {
+            teams.requireIn(team);
+            return documents.listOfTeam(org, plugin, collection, team, page).stream()
+                    .map(this::view)
+                    .toList();
+        }
+        if (organization.guest()) {
+            return List.of();
+        }
+        return documents.list(org, plugin, collection, page).stream()
                 .map(this::view)
                 .toList();
     }
@@ -93,17 +114,23 @@ public class DocumentService {
         return view(find(plugin, collection, id));
     }
 
-    public DocumentView create(String plugin, String collection, JsonNode data) {
+    /** Adds a document for the whole organization, or shared with a team of the person (MK-032). */
+    public DocumentView create(String plugin, String collection, UUID team, JsonNode data) {
         UUID org = organization.require();
         declared(plugin, collection);
+        if (team != null) {
+            teams.requireIn(team);
+        } else if (organization.guest()) {
+            throw new ForbiddenOperationException("A guest shares documents only with their teams.");
+        }
         String text = checked(data);
         if (documents.count(org, plugin, collection) >= MAX_DOCUMENTS) {
             throw new ConflictException("The collection " + collection + " has " + MAX_DOCUMENTS
                     + " documents already, the most it can hold.");
         }
-        PluginDocument document = new PluginDocument(org, plugin, collection, text, author(), clock.instant());
+        PluginDocument document = new PluginDocument(org, plugin, collection, team, text, author(), clock.instant());
         documents.insert(document);
-        changed(plugin, collection, document.getId(), "created");
+        changed(document, "created");
         return view(document);
     }
 
@@ -120,25 +147,34 @@ public class DocumentService {
         }
         document.replace(checked(data), author(), clock.instant());
         documents.update(document);
-        changed(plugin, collection, id, "replaced");
+        changed(document, "replaced");
         return view(document);
     }
 
     public void delete(String plugin, String collection, UUID id) {
-        documents.delete(find(plugin, collection, id));
-        changed(plugin, collection, id, "deleted");
+        PluginDocument document = find(plugin, collection, id);
+        documents.delete(document);
+        changed(document, "deleted");
     }
 
     /**
      * Tells the pages that subscribed to the collection, when the transaction commits (MK-031): only
-     * which document changed, so that each page reads it again with its own rights.
+     * which document changed, so that each page reads it again with its own rights; for a document
+     * of a team, only to its members (MK-032).
      */
-    private void changed(String plugin, String collection, UUID id, String action) {
+    private void changed(PluginDocument document, String action) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", document.getId().toString());
+        data.put("action", action);
+        if (document.getTeamId() != null) {
+            data.put("team", document.getTeamId().toString());
+        }
         live.publish(new LiveEvent(
-                "documents." + plugin + "." + collection,
+                "documents." + document.getPluginId() + "." + document.getCollection(),
                 organization.require(),
                 null,
-                Map.of("id", id.toString(), "action", action)));
+                document.getTeamId(),
+                data));
     }
 
     private PluginDocument find(String plugin, String collection, UUID id) {
@@ -148,8 +184,22 @@ public class DocumentService {
                 .findById(id)
                 .filter(document -> document.getOrganizationId().equals(org)
                         && document.getPluginId().equals(plugin)
-                        && document.getCollection().equals(collection))
+                        && document.getCollection().equals(collection)
+                        && readable(document))
                 .orElseThrow(() -> new ResourceNotFoundException("No document " + id + " in " + collection + "."));
+    }
+
+    /**
+     * Whether the person reads a document, as the row-level security decides too: one of the whole
+     * organization unless a guest, one of a team if in the team (MK-032).
+     */
+    private boolean readable(PluginDocument document) {
+        if (document.getTeamId() == null) {
+            return !organization.guest();
+        }
+        return RequestOrganization.account(identity)
+                .filter(account -> teams.isMember(document.getTeamId(), account))
+                .isPresent();
     }
 
     /** The collection must be declared by an active plugin; otherwise it does not exist. */
@@ -188,6 +238,7 @@ public class DocumentService {
         try {
             return new DocumentView(
                     document.getId(),
+                    document.getTeamId(),
                     json.readTree(document.getData()),
                     document.getVersion(),
                     document.getCreatedAt(),

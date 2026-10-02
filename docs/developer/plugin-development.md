@@ -323,6 +323,23 @@ the app without a reload. [`sample-todo`](../../plugins/sample-todo) is a comple
 `create-mosaikit-plugin` without `--backend` writes one. When an app needs queries beyond listing
 and paging, give it a backend and a schema.
 
+### Sharing with a team
+
+A collection opened with a `team` holds the documents shared with that team (MK-032): only its
+people read and write them, and the row-level security of the kernel enforces it whatever the
+query. Without it, a collection holds the documents of the whole organization, which the guests of
+the organization do not see.
+
+```js
+const teams = await (await context.fetch('/api/v1/teams')).json(); // theirs, and the public ones
+const notes = context.data('notes', { team: teams[0].id });
+await notes.create({ text: 'Agenda of Monday' });
+notes.onChange(() => refresh()); // only the changes of that team
+```
+
+A Java backend reads the teams of the person and their people through `Teams` of `kernel-api`
+(`dev.mosaikit.kernel.api.teams`). Guests of an organization cannot call the APIs of backends.
+
 ## Data of organizations
 
 Every request to a plugin API acts on one organization of the signed-in person (MK-017,

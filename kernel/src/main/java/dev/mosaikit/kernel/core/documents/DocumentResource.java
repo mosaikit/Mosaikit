@@ -42,23 +42,29 @@ public class DocumentResource {
     }
 
     @GET
-    @Operation(summary = "List the documents of a collection, newest first")
+    @Operation(
+            summary = "List the documents of a collection, newest first",
+            description = "Those of the whole organization, or, with ?team=<id>, those shared with that team.")
     public List<DocumentView> list(
             @PathParam("plugin") String plugin,
             @PathParam("collection") String collection,
+            @QueryParam("team") UUID team,
             @QueryParam("offset") @DefaultValue("0") int offset,
             @QueryParam("limit") @DefaultValue("100") int limit) {
-        return documents.list(plugin, collection, offset, limit);
+        return documents.list(plugin, collection, team, offset, limit);
     }
 
     @POST
-    @Operation(summary = "Add a document to a collection")
+    @Operation(
+            summary = "Add a document to a collection",
+            description = "With ?team=<id>, shared with that team of the person only (MK-032).")
     public Response create(
             @PathParam("plugin") String plugin,
             @PathParam("collection") String collection,
+            @QueryParam("team") UUID team,
             JsonNode data,
             @jakarta.ws.rs.core.Context UriInfo uri) {
-        DocumentView created = documents.create(plugin, collection, data);
+        DocumentView created = documents.create(plugin, collection, team, data);
         return Response.created(uri.getAbsolutePathBuilder()
                         .path(created.id().toString())
                         .build())

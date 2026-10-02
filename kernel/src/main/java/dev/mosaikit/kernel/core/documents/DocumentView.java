@@ -9,11 +9,13 @@ import java.util.UUID;
 /**
  * A document as the API returns it.
  *
+ * @param team the team it is shared with, or {@code null} for the whole organization (MK-032)
  * @param version changes at every update; send it back with {@code If-Match} to avoid overwriting
  *     a newer version
  */
 public record DocumentView(
         UUID id,
+        UUID team,
         JsonNode data,
         int version,
         Instant createdAt,

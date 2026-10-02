@@ -387,8 +387,7 @@ class JavaPluginInstallationIT {
         while (System.nanoTime() < deadline) {
             if (!kernel.isAlive()) {
                 // The next start overwrites the log: keep it in the output of the test.
-                System.out.println(
-                        "[kernel] stopped with exit code " + kernel.exitValue() + ":\n" + Files.readString(log));
+                System.out.println("[kernel] stopped with exit code " + kernel.exitValue() + ":\n" + logOf(log));
                 return false;
             }
             if (isReady()) {
@@ -397,7 +396,7 @@ class JavaPluginInstallationIT {
             // Returns at once if the kernel stops, which the next iteration reports.
             kernel.waitFor(250, TimeUnit.MILLISECONDS);
         }
-        throw new AssertionError("The kernel is not ready:\n" + Files.readString(log));
+        throw new AssertionError("The kernel is not ready:\n" + logOf(log));
     }
 
     private boolean isReady() {
@@ -561,5 +560,10 @@ class JavaPluginInstallationIT {
                 Files.delete(path);
             }
         }
+    }
+
+    /** The log of the kernel, whatever the encoding of the console that wrote it. */
+    private static String logOf(Path log) throws IOException {
+        return new String(Files.readAllBytes(log), java.nio.charset.StandardCharsets.UTF_8);
     }
 }

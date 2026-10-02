@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
 import { expect, test } from '@playwright/test';
-import { ADMIN, ANNA, BASE_URL, MARIO } from '../support/env.js';
-import { confirmationLink } from '../support/mail.js';
+import { ANNA, MARIO } from '../support/env.js';
+import { OTHER, otherOrganizationPerson } from '../support/people.js';
 import { api, apps, openApp, plugins, signIn, unique } from '../support/shell.js';
 
 const ID = 'dev.mosaikit.sample.todo';
@@ -41,39 +41,11 @@ test.describe('MK-046 Data of plugins without a backend', () => {
     expect(seen.find((item) => item.data.title === title)?.data.done).toBe(true);
 
     // A person of another organization sees nothing.
-    const other = await otherOrganizationPerson();
-    const response = await fetch(BASE_URL + ITEMS, {
-      headers: { authorization: other.authorization, 'X-Mosaikit-Organization': other.slug },
-    });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual([]);
+    const other = await api(await otherOrganizationPerson(), ITEMS, {}, OTHER.slug);
+    expect(other.status).toBe(200);
+    expect(other.body).toEqual([]);
 
     await page.getByRole('button', { name: `Remove ${title}` }).click();
     await expect(page.getByRole('list', { name: 'Items' })).not.toContainText(title);
   });
 });
-
-async function otherOrganizationPerson(): Promise<{ slug: string; authorization: string }> {
-  const slug = 'altro-comune';
-  const admin = `Basic ${Buffer.from(`${ADMIN.user}:${ADMIN.password}`).toString('base64')}`;
-  await fetch(`${BASE_URL}/api/v1/organizations`, {
-    method: 'POST',
-    headers: { authorization: admin, 'content-type': 'application/json' },
-    body: JSON.stringify({ slug, name: 'Altro Comune', selfRegistration: true }),
-  });
-  const email = 'luca.verdi@altro.test';
-  const password = 'Altro-2026-sicura';
-  await fetch(`${BASE_URL}/api/v1/accounts/registrations`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ organization: slug, email, displayName: 'Luca Verdi', password }),
-  });
-  // Self-registered people confirm their address before signing in (MK-048).
-  const token = new URL(await confirmationLink(email)).searchParams.get('confirm');
-  await fetch(`${BASE_URL}/api/v1/accounts/confirmations`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ token }),
-  });
-  return { slug, authorization: `Basic ${Buffer.from(`${email}:${password}`).toString('base64')}` };
-}

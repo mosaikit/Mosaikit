@@ -9,9 +9,20 @@ import { NO_LIVE, type LiveChannel } from './live.js';
  * manifest declares in `data.collections`.
  */
 
+/** Which documents of a collection (MK-032). */
+export interface DataOptions {
+  /**
+   * The identifier of a team of the person: the documents shared with that team, which only its
+   * members read and write. Without it, the documents of the whole organization.
+   */
+  readonly team?: string;
+}
+
 /** A document of a collection, as the kernel returns it. */
 export interface DataDocument<T extends object = Record<string, unknown>> {
   readonly id: string;
+  /** The team it is shared with, or `null` for the whole organization. */
+  readonly team?: string | null;
   readonly data: T;
   /** Changes at every update; pass it to `update` to refuse overwriting a newer version. */
   readonly version: number;
@@ -32,8 +43,8 @@ export interface DataCollection<T extends object = Record<string, unknown>> {
   remove(id: string): Promise<void>;
   /**
    * Calls `handler` when a document of the collection is created, replaced or deleted, by anyone
-   * of the organization (MK-031), until the returned function is called; read the collection again
-   * then.
+   * of the organization or of the team (MK-031), until the returned function is called; read the
+   * collection again then.
    */
   onChange(handler: (change: { readonly id: string; readonly action: string }) => void): () => void;
 }
@@ -69,9 +80,14 @@ export function dataCollections(
   fetch: Fetch,
   pluginId: string,
   live: LiveChannel = NO_LIVE,
-): <T extends object = Record<string, unknown>>(collection: string) => DataCollection<T> {
-  return <T extends object>(collection: string): DataCollection<T> => {
+): <T extends object = Record<string, unknown>>(
+  collection: string,
+  options?: DataOptions,
+) => DataCollection<T> {
+  return <T extends object>(collection: string, options: DataOptions = {}): DataCollection<T> => {
     const base = `/api/v1/data/${encodeURIComponent(pluginId)}/${encodeURIComponent(collection)}`;
+    const team = options.team;
+    const shared = team === undefined ? '' : `team=${encodeURIComponent(team)}`;
     const json = { 'Content-Type': 'application/json' };
     const send = async <R>(path: string, init?: RequestInit): Promise<R> => {
       const response = await fetch(path, init);
@@ -82,10 +98,17 @@ export function dataCollections(
     };
     const document = (id: string): string => `${base}/${encodeURIComponent(id)}`;
     return {
-      list: (options = {}) =>
-        send(`${base}?offset=${String(options.offset ?? 0)}&limit=${String(options.limit ?? 100)}`),
+      list: (page = {}) =>
+        send(
+          `${base}?${shared ? `${shared}&` : ''}offset=${String(page.offset ?? 0)}&limit=${String(page.limit ?? 100)}`,
+        ),
       get: (id) => send(document(id)),
-      create: (data) => send(base, { method: 'POST', headers: json, body: JSON.stringify(data) }),
+      create: (data) =>
+        send(shared ? `${base}?${shared}` : base, {
+          method: 'POST',
+          headers: json,
+          body: JSON.stringify(data),
+        }),
       update: (id, data, version) =>
         send(document(id), {
           method: 'PUT',
@@ -95,7 +118,11 @@ export function dataCollections(
       remove: (id) => send(document(id), { method: 'DELETE' }),
       onChange: (handler) =>
         live.subscribe(`documents.${pluginId}.${collection}`, (data) => {
-          const change = data as { id?: unknown; action?: unknown };
+          const change = data as { id?: unknown; action?: unknown; team?: unknown };
+          // The events of the other teams, or of the whole organization, are not for this view.
+          if ((change.team ?? undefined) !== team) {
+            return;
+          }
           handler({
             id: typeof change.id === 'string' ? change.id : '',
             action: typeof change.action === 'string' ? change.action : '',

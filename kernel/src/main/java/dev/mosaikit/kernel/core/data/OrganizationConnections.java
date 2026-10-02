@@ -16,15 +16,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Gives each connection taken from the pool the organization of the current request, and the
- * member role that makes the row-level security policies apply (MK-019); takes both away when the
- * connection goes back to the pool.
+ * Gives each connection taken from the pool the organization of the current request, the person
+ * and whether they are a guest (MK-032), and the member role that makes the row-level security
+ * policies apply (MK-019); takes them away when the connection goes back to the pool.
  */
 @ApplicationScoped
 public class OrganizationConnections implements AgroalPoolInterceptor {
 
     private static final String SET =
-            "select set_config('role', ?, false), set_config('mosaikit.organization', ?, false)";
+            "select set_config('role', ?, false), set_config('mosaikit.organization', ?, false),"
+                    + " set_config('mosaikit.account', ?, false), set_config('mosaikit.guest', ?, false)";
     private static final String NONE = "none";
 
     private final RowSecurity rowSecurity;
@@ -41,36 +42,40 @@ public class OrganizationConnections implements AgroalPoolInterceptor {
         }
         // Every request runs as the member role, so that a request without organization sees no row
         // of the plugins; outside requests (start, migrations) the connection keeps the owner.
-        Optional<Optional<UUID>> request = currentRequest();
+        Optional<Request> request = currentRequest();
         if (request.isEmpty()) {
-            apply(connection, NONE, "");
+            apply(connection, NONE, Request.NONE);
         } else {
-            apply(connection, role.get(), request.get().map(UUID::toString).orElse(""));
+            apply(connection, role.get(), request.get());
         }
     }
 
     @Override
     public void onConnectionReturn(Connection connection) {
         if (rowSecurity.role().isPresent()) {
-            apply(connection, NONE, "");
+            apply(connection, NONE, Request.NONE);
         }
     }
 
-    private static void apply(Connection connection, String role, String organization) {
+    private static void apply(Connection connection, String role, Request request) {
         try (PreparedStatement statement = connection.prepareStatement(SET)) {
             statement.setString(1, role);
-            statement.setString(2, organization);
+            statement.setString(2, request.organization().map(UUID::toString).orElse(""));
+            statement.setString(3, request.account().map(UUID::toString).orElse(""));
+            statement.setString(4, String.valueOf(request.guest()));
             statement.execute();
         } catch (SQLException e) {
             throw new IllegalStateException("Cannot set the organization of the connection", e);
         }
     }
 
-    /**
-     * The request on this thread, if there is one, with its organization, if it has one.
-     */
-    @SuppressWarnings("java:S3553")
-    static Optional<Optional<UUID>> currentRequest() {
+    /** What the policies know of a request: its organization, its person, and if a guest. */
+    record Request(Optional<UUID> organization, Optional<UUID> account, boolean guest) {
+        static final Request NONE = new Request(Optional.empty(), Optional.empty(), false);
+    }
+
+    /** The request on this thread, if there is one. */
+    static Optional<Request> currentRequest() {
         ArcContainer container = Arc.container();
         if (container == null || !container.requestContext().isActive()) {
             return Optional.empty();
@@ -78,6 +83,9 @@ public class OrganizationConnections implements AgroalPoolInterceptor {
         var association = container.instance(CurrentIdentityAssociation.class);
         SecurityIdentity identity =
                 association.isAvailable() ? association.get().getIdentity() : null;
-        return Optional.of(RequestOrganization.of(identity));
+        return Optional.of(new Request(
+                RequestOrganization.of(identity),
+                RequestOrganization.account(identity),
+                RequestOrganization.guest(identity)));
     }
 }

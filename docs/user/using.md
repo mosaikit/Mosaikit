@@ -60,6 +60,17 @@ Without network the app still opens and says that you are offline: what you see 
 date, and the apps need the network to read and save data. This needs the address of the
 installation over HTTPS (or `localhost`).
 
+## Teams
+
+A team is a group of people of the organization, with owners and members (MK-032). Whoever creates
+a team owns it, and adds or removes people; a **public** team is listed to everyone of the
+organization, who can join it, a **private** one only to its people. An owner can also add a
+**guest**: a person of another organization with an account on this installation. A guest signs in
+with their password, chooses the organization, and sees only the teams where they were added and
+what the apps share with them. What an app shares with a team is read by its people and by no one
+else, not even the administrators. Out of their last team, a guest is no longer in the
+organization.
+
 ## Activity
 
 **Activity**, at the top of the app bar, collects what the apps tell you: a mention, a task, a

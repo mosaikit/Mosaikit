@@ -49,6 +49,9 @@ HTTP Basic or bearer tokens.
 | `POST /api/v1/accounts/session/remembrance` | signed in, with a password | remember this browser: an HttpOnly cookie signs the person in again for `mosaikit.accounts.remember-for` |
 | `GET /api/v1/shell/plugins` | signed in | frontends of the active plugins, for the shell |
 | `WS /api/v1/live` (WebSocket) | signed in | the real-time channel (MK-031): `?organization=<slug>`; send `{"type": "subscribe", "topic": "…"}`, receive `subscribed`, `refused` or `{"type": "event", "topic", "data"}` |
+| `GET, POST /api/v1/teams` | signed in, with an organization | the teams the person sees (theirs and, unless a guest, the public ones), with their `role`; create one (`name`, `description`, `visibility` `public` or `private`), owned by the person (MK-032, audited) |
+| `GET, PUT, DELETE /api/v1/teams/{id}` | signed in, with an organization | one team with its `members`; change or delete it: its owners and the administrators of the organization |
+| `PUT, DELETE /api/v1/teams/{id}/members/{email}` | signed in, with an organization | add a person with a `role` (`owner`, `member`, or `guest` for a person of another organization) or change it: the owners; join a public team as `member`, or leave a team: the person (audited) |
 | `GET, POST /api/v1/notifications` | signed in, with an organization | the activity feed of the person (`unread`, `notifications`, newest first); notify people of the organization as a plugin (`plugin`, `to` email addresses, `kind`, `title`, `body`, `link`): 202 (MK-038) |
 | `POST /api/v1/notifications/{id}/read`, `POST /api/v1/notifications/read` | signed in, with an organization | mark one, or every, notification of the person as read |
 | `GET /api/v1/shell/apps` | signed in | the apps the person sees in the app bar, in order, with the pinned ones (MK-030) |
@@ -64,7 +67,7 @@ HTTP Basic or bearer tokens.
 | `GET /api/v1/marketplace` | `platform-admin` | the catalogs and what they offer, compared with what is installed (MK-022) |
 | `POST /api/v1/marketplace/installations` | `platform-admin` | install a package of a catalog (`source`, `id`, `version`); 202, active at once or at the next start (`restartRequired`) |
 | `POST /api/v1/plugins/packages` | `platform-admin` | install an uploaded package (`application/zip`); 202, active at once or at the next start (`restartRequired`) |
-| `GET, POST /api/v1/data/{plugin}/{collection}` | signed in, with an organization | the documents of a collection declared by an active plugin, newest first (`offset`, `limit`); add one (MK-046) |
+| `GET, POST /api/v1/data/{plugin}/{collection}` | signed in, with an organization | the documents of a collection declared by an active plugin, newest first (`offset`, `limit`); add one (MK-046); with `team`, those shared with that team of the person only (MK-032) |
 | `GET, PUT, DELETE /api/v1/data/{plugin}/{collection}/{id}` | signed in, with an organization | one document; `PUT` with `If-Match: <version>` answers 409 if it changed since |
 | `GET, PUT /api/v1/platform/settings` | `platform-admin` | the settings of the platform: `{"registration": true}` turns self-registration on or off (audited) |
 | `GET /api/v1/audit-events` | `platform-admin` | the latest audit events (`limit`, `organization`) |

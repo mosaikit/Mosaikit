@@ -30,6 +30,9 @@ public class OrganizationAccess {
     /** Attribute of the security identity: identifier of the organization of the request. */
     public static final String ORGANIZATION_ATTRIBUTE = "mosaikit.organization";
 
+    /** Attribute of the security identity: identifier of the account of the person (MK-032). */
+    public static final String ACCOUNT_ATTRIBUTE = "mosaikit.account";
+
     /** Attribute of the security identity: slug of the organization of the request. */
     public static final String SLUG_ATTRIBUTE = "mosaikit.organization.slug";
 

@@ -11,6 +11,7 @@ manage organizations and plugins. Today this is done through the REST API; the e
 | `platform-admin` | the administrators of the installation | manage organizations, their identity settings and the plugins |
 | `organization-admin` | the managers of an organization | manage their organization (in its realm) |
 | `organization-user` | the people of an organization | use the apps of the installation |
+| `organization-guest` | people of another organization, added to a team | see the teams where they were added and what is shared with them, nothing else of the organization |
 
 ## Organizations
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { LiveChannel } from './live.js';
 import type { Contribution, OwnedContribution } from './contributions.js';
-import type { DataCollection } from './data.js';
+import type { DataCollection, DataOptions } from './data.js';
 import type { EventBus } from './events.js';
 
 /** Information about the signed-in person, as far as a plugin needs it. */
@@ -39,10 +39,12 @@ export interface PluginContext {
   readonly fetch: (path: string, init?: RequestInit) => Promise<Response>;
   /**
    * A collection of documents that the plugin declares in `data.collections` of its manifest,
-   * kept by the kernel for the organization of the person (ADR-0031).
+   * kept by the kernel for the organization of the person (ADR-0031); with `team`, the documents
+   * shared with that team only, which its members alone read (MK-032).
    */
   readonly data: <T extends object = Record<string, unknown>>(
     collection: string,
+    options?: DataOptions,
   ) => DataCollection<T>;
   /** Events of the kernel in real time (MK-031); nothing arrives in an isolated frame. */
   readonly live: LiveChannel;
