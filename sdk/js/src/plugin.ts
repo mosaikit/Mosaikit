@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
 import type { Contribution, OwnedContribution } from './contributions.js';
+import type { DataCollection } from './data.js';
 import type { EventBus } from './events.js';
 
 /** Information about the signed-in person, as far as a plugin needs it. */
@@ -35,6 +36,13 @@ export interface PluginContext {
   readonly user: CurrentUser;
   /** Calls the kernel API with the credentials of the signed-in person. */
   readonly fetch: (path: string, init?: RequestInit) => Promise<Response>;
+  /**
+   * A collection of documents that the plugin declares in `data.collections` of its manifest,
+   * kept by the kernel for the organization of the person (ADR-0031).
+   */
+  readonly data: <T extends object = Record<string, unknown>>(
+    collection: string,
+  ) => DataCollection<T>;
 }
 
 /** The module exported by a plugin frontend. */

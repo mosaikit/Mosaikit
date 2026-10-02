@@ -10,7 +10,7 @@ import {
 import { isFrameMessage, type CallMessage, type ShellMessage } from './bridge-protocol.js';
 
 const METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
-const HEADERS = new Set(['accept', 'content-type']);
+const HEADERS = new Set(['accept', 'content-type', 'if-match']);
 
 /**
  * The side of the shell of the bridge with one isolated frontend (MK-014): it lets through only
@@ -109,8 +109,7 @@ export class ShellBridge {
       this.post({ mk: 1, type: 'result', id: message.id, error: refused });
       return;
     }
-    const api = this.bridge.api ?? '';
-    const path = message.path.startsWith('/') ? message.path : api + message.path;
+    const path = this.resolve(message.path);
     const headers: Record<string, string> = {};
     for (const [name, value] of Object.entries(message.headers)) {
       if (HEADERS.has(name.toLowerCase())) {
@@ -136,27 +135,48 @@ export class ShellBridge {
     }
   }
 
+  /** A relative path is relative to the backend API of the plugin. */
+  private resolve(path: string): string {
+    return path.startsWith('/') ? path : (this.bridge.api ?? '') + path;
+  }
+
+  /**
+   * Where the frame may call: the backend API of the plugin (service `api`) and its collections of
+   * documents (service `data`, ADR-0031), when it has them.
+   */
+  private bases(): string[] {
+    const bases: string[] = [];
+    if (this.bridge.services.includes('api') && this.bridge.api) {
+      bases.push(this.bridge.api);
+    }
+    if (this.bridge.services.includes('data') && this.bridge.data) {
+      bases.push(this.bridge.data);
+    }
+    return bases;
+  }
+
   /** The reason a call is refused, or `undefined` when it may go through. */
   private checkCall(message: CallMessage): string | undefined {
-    if (message.service !== 'api' || !this.bridge.services.includes('api')) {
+    const declared = this.bridge.services.includes('api') || this.bridge.services.includes('data');
+    if (message.service !== 'api' || !declared) {
       return `service '${message.service}' is not in bridge.services`;
     }
-    const api = this.bridge.api;
-    if (!api) {
+    const bases = this.bases();
+    if (bases.length === 0) {
       return 'the plugin has no backend API';
     }
     if (!METHODS.has(message.method.toUpperCase())) {
       return `method ${message.method} is not allowed`;
     }
-    const path = message.path.startsWith('/') ? message.path : api + message.path;
+    const path = this.resolve(message.path);
     const resolved = new URL(path, 'https://shell.invalid');
     if (
       resolved.origin !== 'https://shell.invalid' ||
-      !resolved.pathname.startsWith(api) ||
+      !bases.some((base) => resolved.pathname.startsWith(base)) ||
       path.includes('..') ||
       path.includes('\\')
     ) {
-      return `only the API of the plugin, under ${api}, can be called`;
+      return `only the API of the plugin, under ${bases.join(' or ')}, can be called`;
     }
     return undefined;
   }

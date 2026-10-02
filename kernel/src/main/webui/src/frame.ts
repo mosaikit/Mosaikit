@@ -5,7 +5,13 @@
  * frame with this script only; the runtime asks for the plugin, imports its module, activates it
  * with a context that goes through the bridge, and renders the requested app.
  */
-import { EventBus, isMosaikitPlugin, type EventHandler, type PluginContext } from '@mosaikit/sdk';
+import {
+  dataCollections,
+  EventBus,
+  isMosaikitPlugin,
+  type EventHandler,
+  type PluginContext,
+} from '@mosaikit/sdk';
 import { isShellMessage, type FrameMessage, type InitMessage } from './bridge-protocol.js';
 
 /** Events of the frame: published through the shell, received for declared subscriptions only. */
@@ -153,6 +159,8 @@ export async function start(
     locale: init.locale,
     user: init.user,
     fetch,
+    // Through the data service of the bridge, which the shell checks (ADR-0031).
+    data: dataCollections(fetch, init.plugin.id),
   });
   doc.body.replaceChildren(doc.createElement(init.element));
 }

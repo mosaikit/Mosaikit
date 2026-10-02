@@ -78,6 +78,7 @@ export async function createActivity(person: Person, title: string): Promise<Act
 
 export interface PluginStatus {
   readonly id: string;
+  readonly version: string;
   readonly status: string;
   readonly problems: readonly string[];
 }

@@ -59,6 +59,7 @@
         <module>plugins/sample-estimates</module>
         <module>plugins/sample-react</module>
         <module>plugins/sample-vue</module>
+        <module>plugins/sample-todo</module>
         <module>kernel</module>
         <module>distributions</module>
     </modules>

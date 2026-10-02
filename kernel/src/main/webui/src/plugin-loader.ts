@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
 import {
+  dataCollections,
   EventBus,
   contributionsTo,
   isMosaikitPlugin,
@@ -34,8 +35,16 @@ export class PluginLoader {
   }
 
   /** Loads every plugin; one failure never prevents the others from loading. */
-  async loadAll(plugins: readonly FrontendPlugin[], user: CurrentUser): Promise<LoadResult[]> {
-    return Promise.all(plugins.map((plugin) => this.load(plugin, user, plugins)));
+  /**
+   * @param all every active plugin, whose contributions the loaded ones can read; by default the
+   *     loaded ones
+   */
+  async loadAll(
+    plugins: readonly FrontendPlugin[],
+    user: CurrentUser,
+    all: readonly FrontendPlugin[] = plugins,
+  ): Promise<LoadResult[]> {
+    return Promise.all(plugins.map((plugin) => this.load(plugin, user, all)));
   }
 
   private async load(
@@ -67,6 +76,7 @@ export class PluginLoader {
         locale: navigator.language,
         user,
         fetch: this.request,
+        data: dataCollections(this.request, plugin.id),
       });
       return { pluginId: plugin.id, loaded: true };
     } catch (error) {

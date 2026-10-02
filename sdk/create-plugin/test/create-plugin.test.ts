@@ -73,6 +73,9 @@ describe('create-mosaikit-plugin (MK-023)', () => {
         '@Path("/api/v1/p/traffic-lights/items")',
       );
       expect(files.get('pom.xml')).toContain('<mosaikit.version>0.1.0</mosaikit.version>');
+    } else {
+      expect(manifest).toMatchObject({ data: { collections: ['items'] } });
+      expect(files.get('web/index.js')).toContain("context.data('items').create({ title })");
     }
   });
 

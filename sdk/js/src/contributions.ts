@@ -24,6 +24,8 @@ export interface FrontendBridge {
   readonly services: readonly string[];
   /** Path of the backend API of the plugin, such as `/api/v1/p/notes/`, when it has one. */
   readonly api?: string | null;
+  /** Path of the collections of the plugin, such as `/api/v1/data/<id>/`, when it declares some. */
+  readonly data?: string | null;
 }
 
 /** Frontend of an active plugin, as returned by `GET /api/v1/shell/plugins`. */

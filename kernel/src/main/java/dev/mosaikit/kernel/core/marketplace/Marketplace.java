@@ -142,7 +142,9 @@ public class Marketplace {
                     "The package of " + id + " " + version + " does not match the signed index of " + source + ".");
         }
         Installation installation = place(bytes, Optional.of(entry));
-        LOG.infof("Plugin %s %s installed from %s; restart to use it", id, version, source);
+        LOG.infof(
+                "Plugin %s %s installed from %s%s",
+                id, version, source, installation.restartRequired() ? "; restart to use it" : "");
         return installation;
     }
 
@@ -177,7 +179,14 @@ public class Marketplace {
             String file = packageFile(plugin.key(), version);
             Files.copy(candidate, registry.directory().resolve(file), StandardCopyOption.REPLACE_EXISTING);
             List<String> problems = plugin.status() == PluginStatus.ACTIVE ? List.of() : plugin.problems();
-            return new Installation(plugin.key(), version, file, replaced, keyId, problems, true);
+            // Without Java code nor a schema, nothing has to be built or migrated (ADR-0031): the
+            // plugin takes effect at once.
+            boolean restart = needsRestart(plugin);
+            if (!restart) {
+                registry.reload();
+                LOG.infof("Plugin %s %s is active without a restart", plugin.key(), version);
+            }
+            return new Installation(plugin.key(), version, file, replaced, keyId, problems, restart);
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot install the package", e);
         } finally {
@@ -292,6 +301,14 @@ public class Marketplace {
         }
         URI absolute = Path.of(path).toAbsolutePath().normalize().toUri();
         return absolute.toString().endsWith("/") ? absolute : URI.create(absolute + "/");
+    }
+
+    /** Whether a plugin needs the restart of the kernel: Java code to build or a schema to migrate. */
+    static boolean needsRestart(InstalledPlugin plugin) {
+        return plugin.manifest()
+                .map(manifest ->
+                        manifest.backend().isPresent() || manifest.database().isPresent())
+                .orElse(true);
     }
 
     /** The name of the package of a plugin version in the plugins directory. */

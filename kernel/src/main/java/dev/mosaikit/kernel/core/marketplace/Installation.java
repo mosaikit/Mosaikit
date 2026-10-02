@@ -14,7 +14,8 @@ import java.util.List;
  * @param replaced the package it replaces, kept in {@code plugins/.previous}
  * @param publisherKey the trusted key that signed it
  * @param problems what the kernel will report about it at start, such as a missing requirement
- * @param restartRequired always {@code true}: plugins change only at start
+ * @param restartRequired {@code true} when the plugin has Java code or a schema, which take effect at
+ *     the next start; a plugin with only a frontend and collections is active at once (ADR-0031)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Installation(

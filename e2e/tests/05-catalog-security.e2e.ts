@@ -12,7 +12,7 @@ import {
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { CATALOG, INSTALLATION, MARIO, WORK } from '../support/env.js';
-import { api, openApp, signIn } from '../support/shell.js';
+import { api, openApp, plugins, signIn } from '../support/shell.js';
 import { addToZip, index, sign, unzip, zip } from '../support/tools.js';
 
 const PLUGINS = join(INSTALLATION, 'plugins');
@@ -50,7 +50,12 @@ test.describe('MK-022 Minimal marketplace with signed catalogs', () => {
     expect(existsSync(join(PLUGINS, '.previous', 'dev.mosaikit.sample.react-0.1.0.zip'))).toBe(
       true,
     );
-    await expect(row).toContainText('installed, restart Mosaikit to use it');
+    // A frontend without a backend is replaced at once (ADR-0031).
+    await expect(page.locator('mk-admin-plugins').getByRole('status')).toContainText(
+      'is installed and active',
+    );
+    const react = (await plugins()).find((p) => p.id === 'dev.mosaikit.sample.react');
+    expect(react).toMatchObject({ status: 'ACTIVE', version: '0.1.1' });
   });
 
   test('22.5 a catalog whose index was changed is refused, with all it offers', async ({

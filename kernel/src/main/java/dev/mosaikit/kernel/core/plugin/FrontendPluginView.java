@@ -43,8 +43,11 @@ public record FrontendPluginView(
      * @param subscribes topics it may subscribe to
      * @param services services it may call
      * @param api path of the backend API of the plugin, for the {@code api} service, when it has one
+     * @param data path of the collections of documents of the plugin, for the {@code data} service,
+     *     when it declares some (ADR-0031)
      */
-    public record BridgeView(List<String> publishes, List<String> subscribes, List<String> services, String api) {}
+    public record BridgeView(
+            List<String> publishes, List<String> subscribes, List<String> services, String api, String data) {}
 
     /** Whether a {@code mosaikit.plugins.unverified-frontends} setting isolates unverified plugins. */
     static boolean isolatesUnverified(String setting) {
@@ -74,11 +77,17 @@ public record FrontendPluginView(
                         manifest.backend()
                                 .map(BackendEntry::api)
                                 .map(api -> "/api/v1/p/" + api + "/")
-                                .orElse(null)),
+                                .orElse(null),
+                        manifest.data().map(data -> dataPath(manifest.id())).orElse(null)),
                 manifest.contributions().stream()
                         .map(FrontendPluginView::toView)
                         .toList(),
                 frontend.points());
+    }
+
+    /** Where the collections of a plugin are (DocumentResource). */
+    public static String dataPath(String pluginId) {
+        return "/api/v1/data/" + pluginId + "/";
     }
 
     private static ContributionView toView(Contribution contribution) {

@@ -30,3 +30,4 @@ by a new record that supersedes the old one, never by editing it.
 | [0023](0023-documentation-and-release-documents.md) | Documentation checked at every push, release documents generated from it | Accepted |
 | [0024](0024-hosting-on-github.md) | Hosting on GitHub: one organization, the core and the plugins in separate repositories | Accepted |
 | [0025](0025-github-pages-and-maven-namespace.md) | Publishing on GitHub Pages, and the Maven namespace `io.github.mosaikit` | Accepted |
+| [0031](0031-frontend-plugins-on-the-data-api.md) | Frontend plugins on a data API of the kernel, active without a restart | Accepted |

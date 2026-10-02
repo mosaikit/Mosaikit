@@ -246,4 +246,34 @@ describe('ShellBridge (MK-014)', () => {
       expect.stringContaining('could not be sent'),
     ]);
   });
+
+  it('calls the collections of a plugin that declared the data service (ADR-0031)', async () => {
+    const { bridge, sent, request } = setup({
+      ...plugin,
+      bridge: {
+        publishes: [],
+        subscribes: [],
+        services: ['data'],
+        data: '/api/v1/data/dev.example.boxed/',
+      },
+    });
+    const call = (id: number, path: string, headers: Record<string, string> = {}) =>
+      bridge.handle({ mk: 1, type: 'call', id, service: 'api', method: 'PUT', path, headers });
+
+    call(1, '/api/v1/data/dev.example.boxed/items/42', { 'If-Match': '3', Cookie: 'stolen' });
+    call(2, '/api/v1/data/dev.example.other/items');
+    call(3, '/api/v1/p/boxed/notes');
+    await settle();
+
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith('/api/v1/data/dev.example.boxed/items/42', {
+      method: 'PUT',
+      headers: { 'If-Match': '3' },
+    });
+    expect(sent.map((message) => (message.type === 'result' ? message.error : undefined))).toEqual([
+      expect.stringContaining('under /api/v1/data/dev.example.boxed/'),
+      expect.stringContaining('under /api/v1/data/dev.example.boxed/'),
+      undefined,
+    ]);
+  });
 });

@@ -14,5 +14,7 @@ export type {
 } from './contributions.js';
 export { EventBus, isTopic, patternCovers, topicMatches } from './events.js';
 export type { EventHandler, HandlerErrorListener } from './events.js';
+export { DataError, dataCollections } from './data.js';
+export type { DataCollection, DataDocument } from './data.js';
 export { definePlugin, isMosaikitPlugin } from './plugin.js';
 export type { CurrentUser, MosaikitPlugin, PluginContext } from './plugin.js';

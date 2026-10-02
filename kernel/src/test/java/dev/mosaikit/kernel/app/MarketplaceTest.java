@@ -81,7 +81,10 @@ class MarketplaceTest {
         Files.delete(ROOT.resolve("trusted/publisher.key.pem"));
         Files.createDirectories(CATALOG);
         PackageSignatures.sign(pkg(CATALOG.resolve("market-1.0.0.zip"), "1.0.0"), PUBLISHER);
-        PackageSignatures.sign(pkg(CATALOG.resolve("market-1.1.0.zip"), "1.1.0"), PUBLISHER);
+        // 1.1.0 has a schema to migrate, so it takes effect at the next start; 1.0.0 at once.
+        PackageSignatures.sign(
+                pkg(CATALOG.resolve("market-1.1.0.zip"), "1.1.0", "A plugin of the marketplace test.", true),
+                PUBLISHER);
         PluginIndex.write(CATALOG, PUBLISHER, Instant.now());
         Files.createDirectories(TAMPERED);
         Path changed = pkg(TAMPERED.resolve("market-2.0.0.zip"), "2.0.0");
@@ -95,10 +98,15 @@ class MarketplaceTest {
     }
 
     static Path pkg(Path file, String version, String description) throws IOException {
+        return pkg(file, version, description, false);
+    }
+
+    static Path pkg(Path file, String version, String description, boolean schema) throws IOException {
         try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
             out.putNextEntry(new ZipEntry("manifest.yaml"));
             out.write(("id: " + ID + "\nversion: " + version + "\nname: Market (test)\ndescription: " + description
-                            + "\nkind: [service]\nplatform: '>=0.1 <1'\n")
+                            + "\nkind: [service]\nplatform: '>=0.1 <1'\n"
+                            + (schema ? "database:\n  schema: p_market\n" : ""))
                     .getBytes(UTF_8));
             out.closeEntry();
         }
@@ -123,41 +131,45 @@ class MarketplaceTest {
     }
 
     @Test
-    void installsAPackageOfACatalogAndKeepsTheOneItReplaces() {
+    void installsAPackageOfACatalogAndKeepsTheOneItReplaces() throws IOException {
         asAdmin()
                 .body(Map.of("source", CATALOG.toUri().toString(), "id", ID, "version", "1.0.0"))
                 .post("/api/v1/marketplace/installations")
                 .then()
                 .statusCode(202)
                 .body("file", equalTo(ID + "-1.0.0.zip"))
-                .body("restartRequired", equalTo(true))
+                // Nothing to build or migrate: active at once (ADR-0031).
+                .body("restartRequired", equalTo(false))
                 .body("replaced", nullValue());
         assertThat(PLUGINS.resolve(ID + "-1.0.0.zip")).exists();
-        // Until the restart the offer is waiting, so that nobody installs it twice.
         asAdmin()
                 .get("/api/v1/marketplace")
                 .then()
-                .body("plugins.find { it.version == '1.0.0' }.state", equalTo("restart"));
-
-        // At the next start the plugin is there; then an update replaces its package.
-        registry.reload();
-        asAdmin()
-                .get("/api/v1/marketplace")
-                .then()
+                .body("plugins.find { it.version == '1.0.0' }.state", equalTo("installed"))
                 .body("plugins.find { it.version == '1.1.0' }.state", equalTo("update"));
+
+        // An update with a schema replaces the package and waits for the restart.
         asAdmin()
                 .body(Map.of("source", CATALOG.toUri().toString(), "id", ID, "version", "1.1.0"))
                 .post("/api/v1/marketplace/installations")
                 .then()
                 .statusCode(202)
+                .body("restartRequired", equalTo(true))
                 .body("replaced", equalTo(ID + "-1.0.0.zip"));
         assertThat(PLUGINS.resolve(ID + "-1.1.0.zip")).exists();
+        // Until the restart the offer is waiting, so that nobody installs it twice.
+        asAdmin()
+                .get("/api/v1/marketplace")
+                .then()
+                .body("plugins.find { it.version == '1.1.0' }.state", equalTo("restart"));
         assertThat(PLUGINS.resolve(ID + "-1.0.0.zip")).doesNotExist();
         assertThat(PLUGINS.resolve(".previous").resolve(ID + "-1.0.0.zip")).exists();
         asAdmin()
                 .get("/api/v1/audit-events?limit=50")
                 .then()
                 .body("findAll { it.action == 'plugin.installed' }.subject", hasItem(ID + " 1.1.0"));
+        // The other tests find the catalog as at the start: nothing installed.
+        Files.deleteIfExists(PLUGINS.resolve(ID + "-1.1.0.zip"));
         registry.reload();
     }
 
@@ -199,6 +211,8 @@ class MarketplaceTest {
                 .then()
                 .statusCode(400);
         Files.delete(PLUGINS.resolve(ID + "-3.0.0.zip"));
+        // Active at once when uploaded: the next tests find nothing installed.
+        registry.reload();
     }
 
     private static io.restassured.response.Response upload(Path file) throws IOException {

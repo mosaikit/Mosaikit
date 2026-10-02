@@ -154,6 +154,36 @@ class PluginManifestsTest {
     }
 
     @Test
+    @Tag("MK-046")
+    void readsTheCollectionsOfDocumentsOfAPlugin() {
+        Map<String, Object> tree = validTree();
+        tree.put("data", Map.of("collections", List.of("items", "saved-views")));
+
+        PluginManifest manifest = parseValid(tree);
+
+        assertThat(manifest.data()).hasValueSatisfying(data -> {
+            assertThat(data.collections()).containsExactly("items", "saved-views");
+            assertThat(data.declares("items")).isTrue();
+            assertThat(data.declares("other")).isFalse();
+        });
+        assertThat(parseValid(validTree()).data()).isEmpty();
+    }
+
+    @Test
+    @Tag("MK-046")
+    void rejectsCollectionNamesThatAreNotPathSegmentsAndDuplicates() {
+        Map<String, Object> tree = validTree();
+        tree.put("data", Map.of("collections", List.of("Items", "items", "items", "a/b")));
+        assertThat(parseInvalid(tree))
+                .extracting(ManifestViolation::field)
+                .containsExactly("data.collections[0]", "data.collections[2]", "data.collections[3]");
+
+        Map<String, Object> empty = validTree();
+        empty.put("data", Map.of("collections", List.of()));
+        assertThat(parseInvalid(empty)).extracting(ManifestViolation::field).containsExactly("data.collections");
+    }
+
+    @Test
     void reportsInvalidVersionsAndRanges() {
         Map<String, Object> tree = validTree();
         tree.put("version", "2.3");
