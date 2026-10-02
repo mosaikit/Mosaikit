@@ -21,10 +21,20 @@ export const BASE_URL = `http://localhost:${String(KERNEL_PORT)}`;
 export const CONTROL_URL = `http://localhost:${String(CONTROL_PORT)}`;
 export const MODEL_URL = `http://localhost:${String(MODEL_PORT)}/v1`;
 
+/**
+ * The database of the test installation: E2E_DB_URL when set, otherwise the PostgreSQL that the
+ * global setup starts and names in the same variables (read when used, after the setup).
+ */
 export const DATABASE = {
-  url: env('E2E_DB_URL', 'jdbc:postgresql://localhost:55432/mosaikit'),
-  username: env('E2E_DB_USERNAME', 'mosaikit'),
-  password: env('E2E_DB_PASSWORD', 'mosaikit'),
+  get url(): string {
+    return env('E2E_DB_URL', '');
+  },
+  get username(): string {
+    return env('E2E_DB_USERNAME', 'mosaikit');
+  },
+  get password(): string {
+    return env('E2E_DB_PASSWORD', 'mosaikit');
+  },
 };
 
 /** Signs the packages and the index that the tests add; trusted by the test installation. */

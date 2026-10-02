@@ -71,7 +71,6 @@ export function prepare(): void {
   );
   // The index of the build is signed by the build key; the tests re-index with theirs.
   index(CATALOG);
-  configure(defaultSettings());
 }
 
 export function configure(settings: Settings): void {

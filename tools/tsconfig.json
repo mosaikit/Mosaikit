@@ -6,6 +6,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["**/*.ts", "../tools/postgres.ts"],
-  "exclude": [".work", "report"]
+  "include": ["**/*.ts", "../e2e/support/fake-model.ts"]
 }

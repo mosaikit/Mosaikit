@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 /** The kernel creates the Keycloak realm of a new organization (MK-018), on a real Keycloak. */
 @QuarkusTest
 @WithTestResource(KeycloakTestResource.class)
+@Tag("keycloak")
 @Tag("MK-018")
 class RealmProvisioningTest {
 

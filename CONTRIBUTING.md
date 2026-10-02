@@ -12,19 +12,24 @@ Thank you for considering a contribution. This document describes how the projec
 
 ## Workflow
 
-1. Open or pick an issue. For non-trivial changes, agree on the approach first; decisions that
-   affect the public contract need an Architecture Decision Record in `docs/adr/`.
+1. Open or pick an issue. For non-trivial changes, agree on the approach first. Only big decisions
+   (the public contract of plugins, the architecture, a new dependency on a service) need an
+   Architecture Decision Record in `docs/adr/`; the rest is explained in the commit and the pull
+   request.
 2. Create a short-lived branch from `main`: `feat/<topic>`, `fix/<topic>`, `docs/<topic>`.
 3. Commit using [Conventional Commits](https://www.conventionalcommits.org/):
    `feat(kernel): add organization registry`.
 4. Sign off every commit (`git commit -s`) to certify the
    [Developer Certificate of Origin](https://developercertificate.org/).
-5. Run the full verification locally before pushing:
+5. Run the fast checks locally before pushing; the CI runs the rest:
    ```bash
-   ./mvnw verify
-   npm run verify
+   npm run check:fast
+   ./mvnw verify -Dskip.npm -DskipITs
+   npm run e2e        # when the change touches what people see or do
    ```
-6. Open a merge request. Changes to `kernel-api` (including the manifest schema) or `sdk/` require a review.
+6. Open a pull request; it is merged with rebase once the CI is green. Changes to `kernel-api`
+   (including the manifest schema) or `sdk/` require a review.
+7. A feature is done when its end-to-end tests pass in `e2e/`, not only its unit tests.
 
 ## Quality gate
 

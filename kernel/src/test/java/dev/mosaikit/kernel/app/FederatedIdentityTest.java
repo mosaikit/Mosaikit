@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 /** Sign-in through the Keycloak realm of each organization (MK-012), against a real Keycloak. */
 @QuarkusTest
 @WithTestResource(KeycloakTestResource.class)
+@Tag("keycloak")
 @Tag("MK-012")
 class FederatedIdentityTest {
 

@@ -14,6 +14,7 @@ export default tseslint.config(
       '**/coverage/**',
       'e2e/.work/**',
       'e2e/report/**',
+      '.dev/**',
     ],
   },
   js.configs.recommended,
@@ -46,7 +47,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js', 'vitest.config.ts', '**/vite.config.ts', 'e2e/**/*.ts'],
+    files: ['eslint.config.js', 'vitest.config.ts', '**/vite.config.ts', 'e2e/**/*.ts', 'tools/**/*.ts'],
     languageOptions: { globals: { ...globals.node } },
   },
 );

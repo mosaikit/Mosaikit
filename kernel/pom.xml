@@ -26,6 +26,8 @@
         <!-- SonarQube: what this module contributes to the analysis (the root pom.xml sets the default). -->
         <sonar.sources>pom.xml,src/main/java,src/main/resources,src/main/webui/src,src/main/webui/index.html</sonar.sources>
         <sonar.tests>src/test/java,src/main/webui/test</sonar.tests>
+        <!-- Tests that need Keycloak (Docker): run with -Dtest.groups.excluded= (the nightly CI). -->
+        <test.groups.excluded>keycloak</test.groups.excluded>
     </properties>
 
     <dependencies>
@@ -136,7 +138,7 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Keycloak and PostgreSQL for the federation and installation tests -->
+        <!-- Keycloak for the federation tests (tag keycloak, excluded by default) -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
@@ -238,16 +240,19 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <excludedGroups>${test.groups.excluded}</excludedGroups>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
+                        <!-- The PostgreSQL of the tests comes from node_modules (EmbeddedPostgres). -->
+                        <test.root>${maven.multiModuleProjectDirectory}</test.root>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
                 <!-- End-to-end tests of an installation (MK-011) and of the portable archive (MK-016).
-                     They need Docker, or an external PostgreSQL 18 given with -Dmosaikit.it.jdbc-url,
-                     -Dmosaikit.it.jdbc-username and -Dmosaikit.it.jdbc-password. -->
+                     They start PostgreSQL from node_modules (EmbeddedPostgres), or use an external
+                     PostgreSQL 18 given with -Dmosaikit.it.jdbc-url, -username and -password. -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
@@ -265,6 +270,7 @@
                         <mosaikit.it.activities>${maven.multiModuleProjectDirectory}/plugins/sample-activities/target/sample-activities-${project.version}.zip</mosaikit.it.activities>
                         <mosaikit.it.estimates>${maven.multiModuleProjectDirectory}/plugins/sample-estimates/target/sample-estimates-${project.version}.zip</mosaikit.it.estimates>
                         <mosaikit.it.work>${project.build.directory}/it</mosaikit.it.work>
+                        <test.root>${maven.multiModuleProjectDirectory}</test.root>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>

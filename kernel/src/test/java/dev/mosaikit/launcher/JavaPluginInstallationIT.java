@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.mosaikit.kernel.core.plugin.PluginPackages;
+import dev.mosaikit.testing.EmbeddedPostgres;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -40,12 +41,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
 /**
  * End-to-end test of MK-011 on real installations: kernel as mutable JAR, launcher, Java plugins
- * and PostgreSQL 18 (Testcontainers, or an external server given with {@code
+ * and PostgreSQL 18 ({@link EmbeddedPostgres}, or an external server given with {@code
  * -Dmosaikit.it.jdbc-url}, {@code -username} and {@code -password}). Each test gets its own
  * installation and its own database.
  */
@@ -56,7 +55,7 @@ class JavaPluginInstallationIT {
     private static final String NOTES = "dev.mosaikit.sample.notes";
     private static final Duration ACCEPTANCE = Duration.ofSeconds(60);
 
-    private static GenericContainer<?> postgres;
+    private static EmbeddedPostgres postgres;
     private static String serverUrl;
     private static String jdbcUsername;
     private static String jdbcPassword;
@@ -73,15 +72,10 @@ class JavaPluginInstallationIT {
     static void startDatabaseServer() {
         serverUrl = System.getProperty("mosaikit.it.jdbc-url");
         if (serverUrl == null) {
-            postgres = new GenericContainer<>("postgres:18")
-                    .withEnv("POSTGRES_USER", "mosaikit")
-                    .withEnv("POSTGRES_PASSWORD", "mosaikit")
-                    .withExposedPorts(5432)
-                    .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2));
-            postgres.start();
-            serverUrl = "jdbc:postgresql://" + postgres.getHost() + ":" + postgres.getMappedPort(5432) + "/mosaikit";
-            jdbcUsername = "mosaikit";
-            jdbcPassword = "mosaikit";
+            postgres = EmbeddedPostgres.start();
+            serverUrl = postgres.jdbcUrl("postgres");
+            jdbcUsername = EmbeddedPostgres.USER;
+            jdbcPassword = EmbeddedPostgres.PASSWORD;
         } else {
             jdbcUsername = System.getProperty("mosaikit.it.jdbc-username", "mosaikit");
             jdbcPassword = System.getProperty("mosaikit.it.jdbc-password", "mosaikit");
@@ -91,7 +85,7 @@ class JavaPluginInstallationIT {
     @AfterAll
     static void stopDatabaseServer() {
         if (postgres != null) {
-            postgres.stop();
+            postgres.close();
         }
     }
 
