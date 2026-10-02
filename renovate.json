@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "timezone": "Europe/Rome",
+  "schedule": ["before 7am on monday"],
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies", "no-changelog"],
+  "rebaseWhen": "conflicted",
+  "vulnerabilityAlerts": {
+    "schedule": ["at any time"],
+    "labels": ["dependencies", "security"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "description": "Patches and digests in one weekly pull request, merged when the CI is green.",
+      "matchUpdateTypes": ["patch", "digest", "pin", "pinDigest"],
+      "groupName": "patches",
+      "automerge": true
+    },
+    {
+      "description": "Minor updates in one weekly pull request, reviewed before the merge.",
+      "matchUpdateTypes": ["minor"],
+      "groupName": "minor updates"
+    },
+    {
+      "description": "Quarkus and its extensions move together.",
+      "matchPackageNames": ["io.quarkus:*", "io.quarkus.platform:*", "io.quarkiverse.*:*"],
+      "groupName": "Quarkus"
+    },
+    {
+      "description": "PostgreSQL stays on major version 18, as the database of the installations.",
+      "matchPackageNames": ["embedded-postgres", "@embedded-postgres/*", "postgres"],
+      "groupName": "PostgreSQL",
+      "allowedVersions": "<19"
+    },
+    {
+      "description": "Major updates one by one, never merged automatically.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    }
+  ]
+}
