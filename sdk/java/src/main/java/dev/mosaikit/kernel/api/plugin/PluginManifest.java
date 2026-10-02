@@ -29,6 +29,7 @@ public final class PluginManifest {
     private final BackendEntry backend;
     private final DatabaseEntry database;
     private final DataEntry data;
+    private final ThemeEntry theme;
     private final List<Contribution> contributions;
     private final List<ActionEntry> actions;
 
@@ -45,6 +46,7 @@ public final class PluginManifest {
             BackendEntry backend,
             DatabaseEntry database,
             DataEntry data,
+            ThemeEntry theme,
             List<Contribution> contributions,
             List<ActionEntry> actions) {
         this.id = Objects.requireNonNull(id, "id");
@@ -58,6 +60,7 @@ public final class PluginManifest {
         this.backend = backend;
         this.database = database;
         this.data = data;
+        this.theme = theme;
         this.contributions = List.copyOf(contributions);
         this.actions = List.copyOf(actions);
     }
@@ -120,6 +123,11 @@ public final class PluginManifest {
     /** Collections of documents that the plugin keeps in the kernel, if any (ADR-0031). */
     public Optional<DataEntry> data() {
         return Optional.ofNullable(data);
+    }
+
+    /** The theme of a plugin of kind theme (MK-028). */
+    public Optional<ThemeEntry> theme() {
+        return Optional.ofNullable(theme);
     }
 
     /** Contributions to extension points. */

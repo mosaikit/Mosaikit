@@ -47,6 +47,12 @@ public final class PluginManifests {
     public static final List<String> ACTION_METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE");
 
     /** Name of the API of a plugin: one path segment under {@code /api/v1/p/}. */
+    /** A color of a theme (MK-028). */
+    public static final Pattern COLOR_PATTERN = Pattern.compile("^#[0-9a-fA-F]{6}$");
+
+    /** A font stack of a theme: names, quotes, commas and spaces only. */
+    public static final Pattern FONT_PATTERN = Pattern.compile("^[\\w\\s'\",.-]{1,200}$");
+
     /** Name of a collection of documents of a plugin (ADR-0031). */
     public static final Pattern COLLECTION_PATTERN = Pattern.compile("^[a-z][a-z0-9-]{0,63}$");
 
@@ -93,6 +99,7 @@ public final class PluginManifests {
             BackendEntry backend = readBackend();
             DatabaseEntry database = readDatabase();
             DataEntry data = readData();
+            ThemeEntry theme = readTheme(kinds);
             List<Contribution> contributions = readContributions();
             List<ActionEntry> actions = readActions(backend);
 
@@ -111,6 +118,7 @@ public final class PluginManifests {
                     backend,
                     database,
                     data,
+                    theme,
                     contributions,
                     actions));
         }
@@ -353,6 +361,49 @@ public final class PluginManifests {
                 }
             }
             return new DataEntry(collections);
+        }
+
+        private ThemeEntry readTheme(java.util.Set<PluginKind> kinds) {
+            Map<String, ?> theme = optionalMap(tree, "theme");
+            if (theme.isEmpty()) {
+                if (kinds.contains(PluginKind.THEME)) {
+                    violation("theme", "a plugin of kind theme must declare its theme");
+                }
+                return null;
+            }
+            String title = requiredText(theme, "title", "theme.title");
+            String font = optionalText(theme, "font");
+            if (font != null && !FONT_PATTERN.matcher(font).matches()) {
+                violation("theme.font", "must be a font stack, such as 'Inter', sans-serif");
+            }
+            Integer radius = null;
+            if (theme.get("radius") != null) {
+                if (theme.get("radius") instanceof Integer value && value >= 0 && value <= 24) {
+                    radius = value;
+                } else {
+                    violation("theme.radius", "must be a whole number of pixels from 0 to 24");
+                }
+            }
+            return title == null
+                    ? null
+                    : new ThemeEntry(title, font, radius, colors(theme, "light"), colors(theme, "dark"));
+        }
+
+        private Map<String, String> colors(Map<String, ?> theme, String scheme) {
+            Map<String, ?> raw = optionalMap(theme, scheme);
+            Map<String, String> colors = new java.util.LinkedHashMap<>();
+            raw.forEach((name, value) -> {
+                String field = "theme." + scheme + "." + name;
+                if (!ThemeEntry.COLORS.contains(name)) {
+                    violation(field, "is not a color of a theme: " + String.join(", ", ThemeEntry.COLORS));
+                } else if (!(value instanceof String color)
+                        || !COLOR_PATTERN.matcher(color).matches()) {
+                    violation(field, "must be a color as #rrggbb");
+                } else {
+                    colors.put(name, color.toLowerCase(java.util.Locale.ROOT));
+                }
+            });
+            return colors;
         }
 
         private List<Contribution> readContributions() {

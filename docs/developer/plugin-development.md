@@ -115,6 +115,32 @@ contributes:
 publishes `shell.locale.changed` (`{ locale }`) and `shell.theme.changed` (`{ theme, appearance }`)
 on the event bus, and mounts the current app again when the language changes.
 
+### Theme plugins
+
+A plugin of kind `theme` brings the colors of a brand, and nothing else; it is active as soon as it
+is installed, people choose it in their settings, and an installation can make it its default
+(`mosaikit.ui.theme=<plugin id>`):
+
+```yaml
+id: dev.example.brand
+version: 1.0.0
+name: Our brand
+kind: [theme]
+platform: '>=0.1 <1'
+theme:
+  title: Our brand
+  font: "'Inter', system-ui, sans-serif"   # optional
+  radius: 8                                # optional, 0 to 24 pixels
+  light:                                   # any of: brand, background, surface, foreground,
+    brand: '#8a1538'                       # muted, line, danger, success, warning, focus
+  dark:
+    brand: '#e2738f'
+```
+
+Every color, font or radius it leaves out comes from the default theme. Choose colors with enough
+contrast (WCAG 2.1 AA: 4.5:1 for text): the high contrast appearance stays available to everyone.
+[`sample-theme`](../../plugins/sample-theme) is a complete example.
+
 ### Components and themes
 
 The shell defines the Fluent UI web components for the page

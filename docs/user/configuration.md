@@ -61,7 +61,7 @@ Terminate TLS at a reverse proxy or an ingress; in production the kernel sends
 | `mosaikit.plugins.signatures` | `optional` | `required`: only packages signed with a trusted key are accepted |
 | `mosaikit.plugins.unverified-frontends` | `iframe` | `iframe` runs the frontends of unverified publishers in a sandboxed iframe; `module` loads them like the others |
 | `mosaikit.plugins.watch` | `false` (`true` in development mode) | read the plugins directory again when a file changes; the shell then reloads its page, so changed frontends show at once |
-| `mosaikit.ui.theme` | `mosaikit` | the theme of the interface: `mosaikit`, or `pa` for public administrations, in the style of Bootstrap Italia |
+| `mosaikit.ui.theme` | `mosaikit` | the theme of the interface: `mosaikit`, `pa` for public administrations in the style of Bootstrap Italia, or the identifier of an active theme plugin, such as `dev.mosaikit.sample.theme` |
 | `mosaikit.accounts.remember-for` | `30d` | how long "Remember me" keeps a person signed in on a browser, unless they sign out |
 | `mosaikit.accounts.confirm-email` | `true` | self-registered people confirm their address with a link sent by mail before signing in |
 | `mosaikit.accounts.confirmation-valid-for` | `24h` | how long the link that confirms an address works |

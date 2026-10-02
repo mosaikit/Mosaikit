@@ -16,7 +16,7 @@ test.describe('MK-022 Minimal marketplace with signed catalogs', () => {
     await openApp(page, 'Plugins');
     await expect(page.getByText(/verified, key/)).toBeVisible();
     const rows = page.locator('tbody tr');
-    await expect(rows).toHaveCount(7);
+    await expect(rows).toHaveCount(8);
 
     for (const name of SAMPLES) {
       const id = `dev.mosaikit.sample.${name}`;

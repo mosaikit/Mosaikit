@@ -2,7 +2,7 @@ id: MK-028
 title: Themes as theme plugins
 area: plugins
 priority: P2
-status: planned
+status: done
 description: >-
   A plugin of kind theme brings a set of values of the theme tokens, light and dark, so that an
   installation can offer the theme of its brand without changing the kernel. The theme of public

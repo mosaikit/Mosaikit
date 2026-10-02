@@ -184,6 +184,61 @@ class PluginManifestsTest {
     }
 
     @Test
+    @Tag("MK-028")
+    void readsTheThemeOfAThemePlugin() {
+        Map<String, Object> tree = validTree();
+        tree.put("kind", List.of("theme"));
+        tree.put(
+                "theme",
+                Map.of(
+                        "title",
+                        "Green",
+                        "radius",
+                        8,
+                        "light",
+                        Map.of("brand", "#1B6E3C"),
+                        "dark",
+                        Map.of("brand", "#58c487", "background", "#101410")));
+
+        PluginManifest manifest = parseValid(tree);
+
+        assertThat(manifest.theme()).hasValueSatisfying(theme -> {
+            assertThat(theme.title()).isEqualTo("Green");
+            assertThat(theme.radius()).isEqualTo(8);
+            assertThat(theme.light()).containsEntry("brand", "#1b6e3c");
+            assertThat(theme.dark()).hasSize(2);
+            assertThat(theme.font()).isNull();
+        });
+        assertThat(parseValid(validTree()).theme()).isEmpty();
+    }
+
+    @Test
+    @Tag("MK-028")
+    void rejectsThemesThatTheShellCannotUse() {
+        Map<String, Object> tree = validTree();
+        tree.put(
+                "theme",
+                Map.of(
+                        "title",
+                        "Broken",
+                        "radius",
+                        99,
+                        "font",
+                        "url(evil)",
+                        "light",
+                        Map.of("brand", "red", "glow", "#ffffff")));
+        assertThat(parseInvalid(tree))
+                .extracting(ManifestViolation::field)
+                .containsExactlyInAnyOrder("theme.radius", "theme.font", "theme.light.brand", "theme.light.glow");
+
+        Map<String, Object> withoutTheme = validTree();
+        withoutTheme.put("kind", List.of("theme"));
+        assertThat(parseInvalid(withoutTheme))
+                .extracting(ManifestViolation::field)
+                .containsExactly("theme");
+    }
+
+    @Test
     void reportsInvalidVersionsAndRanges() {
         Map<String, Object> tree = validTree();
         tree.put("version", "2.3");
