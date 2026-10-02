@@ -8,6 +8,10 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The shell is an installable progressive web app (MK-029): a manifest with icons, a service
+  worker that keeps the shell and its files, and a notice when the network is missing instead of
+  an error page.
+
 - Apps per organization (MK-030): the administrators of an organization choose in **Organization
   apps** which apps its app bar shows, in which order, which are pinned and which only
   administrators see (`/api/v1/organizations/{slug}/apps`, audited); a plugin whose apps are all
