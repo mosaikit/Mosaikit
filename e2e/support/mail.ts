@@ -19,5 +19,8 @@ export async function confirmationLink(address: string, after = 0): Promise<stri
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error(`No confirmation mail for ${address}`);
+  const received = mails(MAIL).map((mail) => `${mail.to.join(',')}: ${mail.subject}`);
+  throw new Error(
+    `No confirmation mail for ${address}; received: ${received.join('; ') || 'none'}`,
+  );
 }

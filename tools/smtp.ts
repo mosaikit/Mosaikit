@@ -1,6 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
-import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import { join } from 'node:path';
 
@@ -34,12 +41,23 @@ export async function startFakeSmtp(
   mkdirSync(directory, { recursive: true });
   let count = readdirSync(directory).filter((name) => name.endsWith('.eml')).length;
   const sockets = new Set<Socket>();
+  // The commands and the replies, without the content of the mails, to understand a lost mail.
+  const transcript = join(directory, 'smtp.log');
+  let connections = 0;
 
   const server: Server = createServer((socket) => {
     sockets.add(socket);
-    socket.on('close', () => sockets.delete(socket));
+    const connection = ++connections;
+    const note = (text: string): void => {
+      appendFileSync(transcript, `${new Date().toISOString()} #${String(connection)} ${text}\n`);
+    };
+    socket.on('close', () => {
+      note('closed');
+      sockets.delete(socket);
+    });
     // A client that drops the connection (ECONNRESET) must not stop the server.
-    socket.on('error', () => {
+    socket.on('error', (error) => {
+      note(`error ${error.message}`);
       socket.destroy();
     });
     socket.setEncoding('utf8');
@@ -48,6 +66,7 @@ export async function startFakeSmtp(
     let from = '';
     let to: string[] = [];
     const reply = (line: string): void => {
+      note(`< ${line}`);
       socket.write(`${line}\r\n`);
     };
     reply('220 localhost fake SMTP of Mosaikit');
@@ -68,6 +87,7 @@ export async function startFakeSmtp(
             const file = join(directory, `${String(count).padStart(5, '0')}.eml`);
             writeFileSync(`${file}.part`, `${ENVELOPE}${to.join(',')}\r\n${raw}`);
             renameSync(`${file}.part`, file);
+            note(`stored ${file} for ${to.join(',')}`);
             onMail(mail);
             data = undefined;
             reply('250 OK: queued');
@@ -76,6 +96,7 @@ export async function startFakeSmtp(
           }
           continue;
         }
+        note(`> ${line}`);
         const command = line.slice(0, 4).toUpperCase();
         if (command === 'EHLO') {
           reply('250-localhost');

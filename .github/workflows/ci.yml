@@ -251,6 +251,7 @@ jobs:
             e2e/report/
             e2e/.work/results/
             e2e/.work/installation.log
+            e2e/.work/mail/
           retention-days: 7
 
   # ---------------------------------------------------------------------------------------------
