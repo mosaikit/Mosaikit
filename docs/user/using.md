@@ -60,6 +60,13 @@ Without network the app still opens and says that you are offline: what you see 
 date, and the apps need the network to read and save data. This needs the address of the
 installation over HTTPS (or `localhost`).
 
+## Activity
+
+**Activity**, at the top of the app bar, collects what the apps tell you: a mention, a task, a
+reminder. The number on its icon is what you have not read yet; it changes at once when something
+arrives. Choose a notification to open what it is about; **Mark all as read** clears the list. In
+**Settings**, under **Notifications**, untick the kinds you do not want to receive.
+
 ## Your settings
 
 Open the menu of your avatar and choose **Settings**:

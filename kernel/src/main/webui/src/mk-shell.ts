@@ -9,6 +9,7 @@ import {
   KernelError,
   type Account,
   type ActionDraft,
+  type ActivityNotification,
   type Preferences,
   type ShellApp,
   type Registration,
@@ -28,6 +29,7 @@ import './mk-admin-plugins.js';
 import './mk-admin-settings.js';
 import './mk-assistant.js';
 import './mk-plugin-frame.js';
+import './mk-activity.js';
 import './mk-settings.js';
 import type { SettingsSection } from './mk-settings.js';
 import './mk-sign-in.js';
@@ -112,6 +114,19 @@ export class MkShell extends LitElement {
     .brand .version {
       font-weight: 400;
       font-size: 12px;
+    }
+    .rail .badge {
+      position: absolute;
+      top: 4px;
+      right: 14px;
+      min-width: 16px;
+      padding: 0 4px;
+      border-radius: 8px;
+      background: var(--mk-danger);
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 16px;
     }
     .search {
       position: relative;
@@ -487,8 +502,12 @@ export class MkShell extends LitElement {
   @state() private searchText = '';
   @state() private searchIndex = 0;
   @state() private menuOpen = false;
+  /** The activity feed of the person (MK-038). */
+  @state() private activity: ActivityNotification[] = [];
+  @state() private unread = 0;
   /** The real-time channel of the page (MK-031). */
   private readonly live = new LiveClient();
+  private stopActivity: (() => void) | undefined;
   /** Whether the browser has network (MK-029). */
   @state() private online = typeof navigator === 'undefined' ? true : navigator.onLine;
   private readonly onNetwork = (): void => {
@@ -699,6 +718,7 @@ export class MkShell extends LitElement {
   private destinations(): { title: string; route: string }[] {
     return [
       { title: t('Home'), route: '/' },
+      { title: t('Activity'), route: '/activity' },
       { title: t('Settings'), route: '/settings' },
       ...this.entries.map((entry) => ({ title: entry.title, route: entry.route })),
       ...this.adminPages().map((page) => ({ title: t(page.title), route: page.path })),
@@ -796,6 +816,62 @@ export class MkShell extends LitElement {
     });
   }
 
+  /** The activity feed (MK-038). */
+  private renderActivity(): unknown {
+    return html`<mk-activity
+      .notifications=${this.activity}
+      .unread=${this.unread}
+      .language=${this.shellLanguage}
+      @mk-open-notification=${this.openNotification}
+      @mk-read-all=${this.readAll}
+    ></mk-activity>`;
+  }
+
+  /** The kinds of notifications the person received or turned off, for the settings. */
+  private notificationKinds(): string[] {
+    const kinds = new Set(
+      this.activity.map((notification) => `${notification.pluginId}/${notification.kind}`),
+    );
+    for (const muted of this.preferences?.mutedNotifications ?? []) {
+      kinds.add(muted);
+    }
+    return [...kinds].sort();
+  }
+
+  /** Reads the activity feed again: at sign-in and when the kernel pushes a notification. */
+  private async loadActivity(): Promise<void> {
+    if (!this.account?.organization) {
+      this.activity = [];
+      this.unread = 0;
+      return;
+    }
+    try {
+      const feed = await this.client.activity();
+      this.activity = feed.notifications;
+      this.unread = feed.unread;
+    } catch {
+      // The feed stays as it was.
+    }
+  }
+
+  private readonly openNotification = async (
+    event: CustomEvent<ActivityNotification>,
+  ): Promise<void> => {
+    const notification = event.detail;
+    if (!notification.read) {
+      await this.client.markRead(notification.id).catch(() => undefined);
+      await this.loadActivity();
+    }
+    if (notification.link) {
+      this.go(notification.link);
+    }
+  };
+
+  private readonly readAll = async (): Promise<void> => {
+    await this.client.markAllRead().catch(() => undefined);
+    await this.loadActivity();
+  };
+
   /** The personal settings page (MK-027). */
   private renderSettings(): unknown {
     const all = launcherEntries(this.plugins);
@@ -804,6 +880,7 @@ export class MkShell extends LitElement {
       .themes=${uiThemes()}
       .apps=${this.barEntries(all)}
       .sections=${this.settingsSections()}
+      .notificationKinds=${this.notificationKinds()}
       .organizations=${this.renderOrganizationSelector()}
       .status=${this.settingsStatus}
       .language=${this.shellLanguage}
@@ -1101,6 +1178,21 @@ export class MkShell extends LitElement {
         : nothing;
     return html`
       <nav class="rail" aria-label=${t('Apps')}>
+        <a
+          href="/activity"
+          aria-current=${this.path === '/activity' ? 'page' : 'false'}
+          aria-label=${
+            this.unread > 0 ? t('Activity, {count} unread', { count: this.unread }) : t('Activity')
+          }
+          @click=${this.navigate}
+          >${bellIcon}${
+            this.unread > 0
+              ? html`<span class="badge" aria-hidden="true"
+                  >${this.unread > 99 ? '99+' : this.unread}</span
+                >`
+              : nothing
+          }<span>${t('Activity')}</span></a
+        >
         <a href="/" aria-current=${this.path === '/' ? 'page' : 'false'} @click=${this.navigate}
           >${homeIcon}<span>${t('Home')}</span></a
         >
@@ -1121,27 +1213,29 @@ export class MkShell extends LitElement {
         ${
           this.path === '/settings'
             ? this.renderSettings()
-            : entryForPath(this.entries, this.path) || this.showsAdmin()
-              ? nothing
-              : html`${this.renderAssistant()}${this.renderPendingActions()}
-                  <h1>${t('Welcome, {name}', { name: this.account?.displayName ?? '' })}</h1>
-                  <p class="muted">
-                    ${t('{count} apps available.', { count: this.entries.length })} ${failures}
-                  </p>
-                  ${
-                    this.entries.length > 0
-                      ? html`<ul class="apps" aria-label=${t('Your apps')}>
-                          ${this.entries.map(
-                            (entry) =>
-                              html`<li>
-                                <a href=${entry.route} @click=${this.navigate}
-                                  >${appIcon(entry)}<span>${entry.title}</span></a
-                                >
-                              </li>`,
-                          )}
-                        </ul>`
-                      : nothing
-                  }`
+            : this.path === '/activity'
+              ? this.renderActivity()
+              : entryForPath(this.entries, this.path) || this.showsAdmin()
+                ? nothing
+                : html`${this.renderAssistant()}${this.renderPendingActions()}
+                    <h1>${t('Welcome, {name}', { name: this.account?.displayName ?? '' })}</h1>
+                    <p class="muted">
+                      ${t('{count} apps available.', { count: this.entries.length })} ${failures}
+                    </p>
+                    ${
+                      this.entries.length > 0
+                        ? html`<ul class="apps" aria-label=${t('Your apps')}>
+                            ${this.entries.map(
+                              (entry) =>
+                                html`<li>
+                                  <a href=${entry.route} @click=${this.navigate}
+                                    >${appIcon(entry)}<span>${entry.title}</span></a
+                                  >
+                                </li>`,
+                            )}
+                          </ul>`
+                        : nothing
+                    }`
         }
         <div id="app-host"></div>
       </main>
@@ -1314,12 +1408,15 @@ export class MkShell extends LitElement {
     );
     // One real-time channel for the page, in the organization of the person (MK-031).
     this.live.connect(account.organization ?? undefined);
+    this.stopActivity?.();
+    this.stopActivity = this.live.subscribe('notifications', () => void this.loadActivity());
     this.loadResults = await loader.loadAll(plugins, account);
     this.plugins = plugins;
     this.loader = loader;
     this.entries = this.visibleEntries(launcherEntries(plugins));
     this.account = account;
     this.preferences = account.preferences ?? NO_PREFERENCES;
+    void this.loadActivity();
     this.plugins = plugins;
     await this.loadBarApps();
     this.applyAppearance();
@@ -1564,6 +1661,9 @@ const homeIcon = icon(
 const pluginsIcon = icon(
   svg`<rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><path d="M16.5 13v7M13 16.5h7" />`,
 );
+const bellIcon = icon(
+  svg`<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2H4.5z" /><path d="M10 20.5a2 2 0 0 0 4 0" />`,
+);
 const settingsIcon = icon(
   svg`<path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" />`,
 );
@@ -1599,4 +1699,5 @@ const NO_PREFERENCES: Preferences = {
   appearance: null,
   language: null,
   hiddenApps: [],
+  mutedNotifications: [],
 };

@@ -278,3 +278,34 @@ describe('KernelClient settings, themes and apps (MK-027, MK-028, MK-030)', () =
     expect(fetchMock.mock.calls[4]?.[1]?.body).toBe(JSON.stringify(apps));
   });
 });
+
+describe('KernelClient activity (MK-038)', () => {
+  it('reads the feed, marks notifications read and notifies as a plugin', async () => {
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() =>
+      Promise.resolve(json(200, { unread: 0, notifications: [] })),
+    );
+    const client = new KernelClient(fetchMock, memory());
+
+    await client.activity();
+    await client.markRead('n 1');
+    await client.markAllRead();
+    await client.notify('dev.example.notes', {
+      to: ['ada@example.org'],
+      kind: 'mention',
+      title: 'T',
+    });
+
+    expect(fetchMock.mock.calls.map(([path, init]) => [path, init?.method ?? 'GET'])).toEqual([
+      ['/api/v1/notifications', 'GET'],
+      ['/api/v1/notifications/n%201/read', 'POST'],
+      ['/api/v1/notifications/read', 'POST'],
+      ['/api/v1/notifications', 'POST'],
+    ]);
+    expect(JSON.parse(fetchMock.mock.calls[3]?.[1]?.body as string)).toEqual({
+      plugin: 'dev.example.notes',
+      to: ['ada@example.org'],
+      kind: 'mention',
+      title: 'T',
+    });
+  });
+});

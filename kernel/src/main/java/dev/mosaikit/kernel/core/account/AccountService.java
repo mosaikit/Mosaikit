@@ -273,6 +273,27 @@ public class AccountService {
                 readPreferences(account));
     }
 
+    /** Whether an account is a member of an organization. */
+    public boolean isMemberOf(UUID account, UUID organization) {
+        return members.findByAccountId(account).stream()
+                .anyMatch(member -> member.getOrganizationId().equals(organization));
+    }
+
+    /** The account of an email address, when it is a member of the organization. */
+    public Optional<UUID> idIn(String email, UUID organization) {
+        return accounts.findByUsername(normalize(email))
+                .map(UserAccount::getId)
+                .filter(account -> isMemberOf(account, organization));
+    }
+
+    /** Whether an account turned off a kind of notifications, as {@code <plugin id>/<kind>} (MK-038). */
+    public boolean mutes(UUID account, String kind) {
+        return accounts.findById(account)
+                .map(this::readPreferences)
+                .map(preferences -> preferences.mutedNotifications().contains(kind))
+                .orElse(false);
+    }
+
     /** The personal settings of the signed-in person (MK-027). */
     public Preferences preferences(String username) {
         return accounts.findByUsername(normalize(username))

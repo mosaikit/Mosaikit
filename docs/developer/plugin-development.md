@@ -125,6 +125,25 @@ Topics are `documents.<plugin id>.<collection>`, `plugin.<plugin id>.<name>` and
 the kernel refuses the others, and those of plugins that the organization turned off. Send what
 changed, not the data: pages read it again with the rights of each person.
 
+### Notifications
+
+A plugin notifies people of the organization in their activity feed (MK-038): a frontend with
+`context.notify`, by email address, a Java backend with `Notifications` of `kernel-api`, by account
+identifier.
+
+```js
+await context.notify({
+  to: ['anna.bianchi@example.org'],
+  kind: 'mention',            // people can turn each kind off
+  title: 'Mario mentioned you',
+  body: 'In the notes of the meeting',
+  link: '/app/notes',         // a path of the shell
+});
+```
+
+The people who are not in the organization, or who turned the kind off, receive nothing. The feed
+is pushed on the real-time channel, so the pages show it at once.
+
 ### Settings, language and theme
 
 A plugin adds a section to the personal settings with the point `settings.section`; `roles`, when

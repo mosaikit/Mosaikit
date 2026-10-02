@@ -84,6 +84,13 @@ const ITALIAN: Record<string, string> = {
   'Pinned by your organization': 'Fissata dalla tua organizzazione',
   'Saved.': 'Salvato.',
   'Not saved: {reason}': 'Non salvato: {reason}',
+  // Activity (MK-038)
+  Activity: 'Attività',
+  'Activity, {count} unread': 'Attività, {count} non lette',
+  'Mark all as read': 'Segna tutte come lette',
+  'Nothing new.': 'Niente di nuovo.',
+  Notifications: 'Notifiche',
+  'Unread: {title}': 'Non letta: {title}',
   // Offline (MK-029)
   'You are offline: what you see may not be up to date, and changes wait for the network.':
     'Sei offline: ciò che vedi potrebbe non essere aggiornato, e le modifiche aspettano la rete.',

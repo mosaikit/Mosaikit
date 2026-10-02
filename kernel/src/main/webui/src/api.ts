@@ -93,6 +93,31 @@ export interface Preferences {
   readonly language: 'en' | 'it' | null;
   /** `<plugin id>/<app id>` of the apps hidden from the app bar. */
   readonly hiddenApps: readonly string[];
+  /** `<plugin id>/<kind>` of the notifications the person does not want (MK-038). */
+  readonly mutedNotifications?: readonly string[];
+}
+
+/** A notification of the activity feed (MK-038). */
+export interface ActivityNotification {
+  readonly id: string;
+  readonly pluginId: string;
+  readonly kind: string;
+  readonly title: string;
+  readonly body: string;
+  /** A path of the shell, such as `/app/notes`, or `null`. */
+  readonly link: string | null;
+  readonly createdAt: string;
+  readonly read: boolean;
+}
+
+/** A notification that a frontend plugin sends (MK-038). */
+export interface SentNotification {
+  /** Email addresses of people of the organization. */
+  readonly to: readonly string[];
+  readonly kind: string;
+  readonly title: string;
+  readonly body?: string;
+  readonly link?: string;
 }
 
 /** Header with which the shell names the organization chosen by the person. */
@@ -302,6 +327,24 @@ export class KernelClient {
   /** The themes of the active theme plugins (MK-028); anyone can read them, before signing in too. */
   themes(): Promise<PluginTheme[]> {
     return this.getJson<PluginTheme[]>('/api/v1/system/themes');
+  }
+
+  /** The activity feed of the signed-in person in the organization, newest first (MK-038). */
+  activity(): Promise<{ unread: number; notifications: ActivityNotification[] }> {
+    return this.getJson('/api/v1/notifications');
+  }
+
+  async markRead(id: string): Promise<void> {
+    await this.send(`/api/v1/notifications/${encodeURIComponent(id)}/read`, {});
+  }
+
+  async markAllRead(): Promise<void> {
+    await this.send('/api/v1/notifications/read', {});
+  }
+
+  /** Notifies people of the organization as a plugin. */
+  async notify(pluginId: string, notification: SentNotification): Promise<void> {
+    await this.send('/api/v1/notifications', { plugin: pluginId, ...notification });
   }
 
   /** The apps that the signed-in person sees, in order (MK-030). */

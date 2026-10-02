@@ -25,7 +25,7 @@ test.describe('MK-025 Shell with app bar, top bar and work area', () => {
     const bar = apps(page);
     // The sample plugins contribute to rail.app with an order: To do (10) before Activities (20).
     const titles = await bar.getByRole('link').allInnerTexts();
-    expect(titles[0]).toBe('Home');
+    expect(titles.slice(0, 2)).toEqual(['Activity', 'Home']);
     expect(titles.indexOf('To do')).toBeLessThan(titles.indexOf('Activities'));
     await expect(
       bar.getByRole('link', { name: 'To do', exact: true }).locator('img'),
