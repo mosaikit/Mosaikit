@@ -55,6 +55,8 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `npm run dev` builds the plugin API at every start: after a `git pull` the dev mode ran the new
+  kernel on the old classes of `sdk/java/target` and failed with `NoSuchMethodError`.
 - The rebuild of the kernel for Java plugins no longer records the settings of the installation:
   passwords of `config/application.properties` or of the environment ended up in
   `bin/kernel/quarkus/generated-bytecode.jar`, and a removed setting kept applying. The next start

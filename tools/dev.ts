@@ -11,8 +11,7 @@
  * The database lives in .dev/postgres and survives restarts.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, rmSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startFakeModel } from '../e2e/support/fake-model.ts';
@@ -36,18 +35,26 @@ const log = (message: string): void => {
   process.stdout.write(`\x1b[36m[dev]\x1b[0m ${message}\n`);
 };
 
-/** The plugin API must be in the local Maven repository before the dev mode of the kernel. */
-function ensurePluginApi(): void {
-  const groups = ['io/github/mosaikit', 'dev/mosaikit'].map((group) =>
-    join(homedir(), '.m2', 'repository', group, 'mosaikit-kernel-api'),
-  );
-  if (groups.some((group) => existsSync(group) && readdirSync(group).length > 0)) {
-    return;
-  }
-  log('first run: installing the plugin API and the sample plugins (once)…');
+/**
+ * Builds the plugin API (`sdk/java`) at every start. The dev mode of the kernel takes its classes
+ * from `sdk/java/target/classes` of this checkout, which a `git pull` leaves stale: a kernel with
+ * new code would then run on the old API (NoSuchMethodError). It takes a few seconds.
+ */
+function buildPluginApi(): void {
+  log('building the plugin API…');
   const built = spawnSync(
     mvnw,
-    ['-B', '-q', 'install', '-DskipTests', '-Dskip.npm', '-pl', 'kernel', '-am'],
+    [
+      '-B',
+      '-q',
+      'install',
+      '-DskipTests',
+      '-Dskip.npm',
+      '-Dspotless.apply.skip=true',
+      '-pl',
+      'sdk/java',
+      '-am',
+    ],
     {
       cwd: ROOT,
       stdio: 'inherit',
@@ -102,7 +109,7 @@ async function main(): Promise<void> {
     rmSync(directory, { recursive: true, force: true });
     log('database reset');
   }
-  ensurePluginApi();
+  buildPluginApi();
   const database = await startPostgres({ directory, persistent: true, port: DB_PORT });
   log(`PostgreSQL on 127.0.0.1:${String(database.port)} (.dev/postgres)`);
   const model = await startFakeModel(MODEL_PORT);

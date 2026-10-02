@@ -37,7 +37,7 @@ which packages the UI), then `npm run check` in the test phase.
 npm run dev                      # npm run dev -- --reset starts again from an empty database
 ```
 
-`tools/dev.ts` installs the plugin API the first time, starts PostgreSQL 18 from `node_modules`
+`tools/dev.ts` builds the plugin API at every start (a few seconds: the dev mode takes its classes from `sdk/java/target`), starts PostgreSQL 18 from `node_modules`
 (its data in `.dev/postgres`, kept between runs), a fake language model for the assistant, and
 `./mvnw -pl kernel quarkus:dev`; once the kernel is ready it creates the organization `demo` with
 two people and prints how to sign in. Nothing to install or start by hand but Java and Node.
