@@ -46,6 +46,20 @@ another one.
 If an app cannot be loaded, the home page says how many plugins failed; tell your administrator,
 who sees the reason in the plugin list.
 
+## Mosaikit as an app
+
+Mosaikit can be installed on a computer or a phone, and then opens in its own window, without the
+bar of the browser:
+
+- Chrome and Edge: the install icon at the end of the address bar, or **Install Mosaikit** in the
+  menu;
+- Safari on iPhone and iPad: **Share**, then **Add to Home Screen**;
+- Chrome on Android: **Install app** in the menu.
+
+Without network the app still opens and says that you are offline: what you see may not be up to
+date, and the apps need the network to read and save data. This needs the address of the
+installation over HTTPS (or `localhost`).
+
 ## Your settings
 
 Open the menu of your avatar and choose **Settings**:

@@ -1,7 +1,7 @@
 version = 1
 
 [[annotations]]
-path = ["**/*.md", "**/*.json", "**/*.yaml", "**/*.yml", "**/*.toml", ".editorconfig", ".gitattributes", ".gitignore", ".gitleaksignore", "NOTICE", "**/*.svg"]
+path = ["**/*.md", "**/*.json", "**/*.yaml", "**/*.yml", "**/*.toml", ".editorconfig", ".gitattributes", ".gitignore", ".gitleaksignore", "NOTICE", "**/*.svg", "**/*.png", "**/*.webmanifest"]
 SPDX-FileCopyrightText = "2026 Massimo Antonini"
 SPDX-License-Identifier = "MPL-2.0"
 

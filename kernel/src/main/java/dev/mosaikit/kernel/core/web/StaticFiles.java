@@ -31,7 +31,8 @@ public final class StaticFiles {
             Map.entry("ico", "image/x-icon"),
             Map.entry("woff", "font/woff"),
             Map.entry("woff2", "font/woff2"),
-            Map.entry("html", "text/html"));
+            Map.entry("html", "text/html"),
+            Map.entry("webmanifest", "application/manifest+json"));
 
     private StaticFiles() {}
 

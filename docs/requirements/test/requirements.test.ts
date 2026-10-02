@@ -39,6 +39,8 @@ function referencedIds(): Map<string, string[]> {
     ...filesUnder(join(root, 'sdk'), 'Test.java'),
     ...filesUnder(join(root, 'sdk'), '.test.ts'),
     ...filesUnder(join(root, 'plugins'), '.test.ts'),
+    // A requirement is done when its end-to-end tests pass, so they count too.
+    ...filesUnder(join(root, 'e2e', 'tests'), '.e2e.ts'),
   ];
   for (const file of sources) {
     for (const match of readFileSync(file, 'utf8').matchAll(/MK-\d{3}/g)) {

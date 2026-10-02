@@ -1,0 +1,36 @@
+{
+    "name": "Mosaikit",
+    "short_name": "Mosaikit",
+    "description": "All the apps of your organization, in one place.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f5f6fa",
+    "theme_color": "#3654c9",
+    "icons": [
+        {
+            "src": "/icons/mosaikit-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/mosaikit-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/mosaikit-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icons/mosaikit.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}

@@ -69,6 +69,20 @@ export class MkShell extends LitElement {
     :host {
       display: block;
     }
+    .offline {
+      position: fixed;
+      z-index: 20;
+      left: 50%;
+      bottom: 72px;
+      transform: translateX(-50%);
+      max-width: calc(100% - 32px);
+      margin: 0;
+      padding: 10px 16px;
+      border-radius: var(--mk-radius);
+      background: var(--mk-fg);
+      color: var(--mk-surface);
+      box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+    }
     .frame {
       display: grid;
       grid-template-rows: 48px 1fr;
@@ -472,6 +486,11 @@ export class MkShell extends LitElement {
   @state() private searchText = '';
   @state() private searchIndex = 0;
   @state() private menuOpen = false;
+  /** Whether the browser has network (MK-029). */
+  @state() private online = typeof navigator === 'undefined' ? true : navigator.onLine;
+  private readonly onNetwork = (): void => {
+    this.online = navigator.onLine;
+  };
   /** Why the apps could not be loaded after signing in. */
   @state() private appsError: string | undefined;
   /** The personal settings of the signed-in person (MK-027). */
@@ -504,6 +523,8 @@ export class MkShell extends LitElement {
     // The administrators of the organization changed its apps (MK-030).
     this.addEventListener('mk-apps-changed', () => void this.loadBarApps());
     window.addEventListener('popstate', this.onPopState);
+    window.addEventListener('online', this.onNetwork);
+    window.addEventListener('offline', this.onNetwork);
     this.client.systemInfo().then(
       (info) => {
         this.info = info;
@@ -563,6 +584,8 @@ export class MkShell extends LitElement {
     clearInterval(this.draftTimer);
     clearInterval(this.watchTimer);
     window.removeEventListener('popstate', this.onPopState);
+    window.removeEventListener('online', this.onNetwork);
+    window.removeEventListener('offline', this.onNetwork);
     super.disconnectedCallback();
   }
 
@@ -573,19 +596,26 @@ export class MkShell extends LitElement {
   }
 
   override render(): unknown {
+    // Without network the shell still opens, from the cache of its service worker (MK-029).
+    const offline = this.online
+      ? nothing
+      : html`<p class="offline" role="status">
+          ${t('You are offline: what you see may not be up to date, and changes wait for the network.')}
+        </p>`;
     if (!this.account) {
-      return this.renderSignIn();
+      return html`${offline}${this.renderSignIn()}`;
     }
-    return html`<div class="frame" @keydown=${this.keyFrame}>
-      <header class="top">
-        <span class="brand"
-          >${mark}<span class="name">${this.info?.name ?? 'Mosaikit'}</span
-          ><span class="version">${this.info ? `v${this.info.version}` : nothing}</span></span
-        >
-        ${this.renderSearch()} ${this.renderAccount()}
-      </header>
-      ${this.renderWorkspace()}
-    </div>`;
+    return html`${offline}
+      <div class="frame" @keydown=${this.keyFrame}>
+        <header class="top">
+          <span class="brand"
+            >${mark}<span class="name">${this.info?.name ?? 'Mosaikit'}</span
+            ><span class="version">${this.info ? `v${this.info.version}` : nothing}</span></span
+          >
+          ${this.renderSearch()} ${this.renderAccount()}
+        </header>
+        ${this.renderWorkspace()}
+      </div>`;
   }
 
   /** The search of the top bar: apps and pages by title, until the global search (MK-040). */
