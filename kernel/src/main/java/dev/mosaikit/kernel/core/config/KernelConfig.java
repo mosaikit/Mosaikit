@@ -64,22 +64,12 @@ public interface KernelConfig {
     interface Ui {
 
         /**
-         * The theme of the shell: {@code mosaikit}, or {@code pa} for public administrations, in the
-         * style of Bootstrap Italia (AgID design guidelines).
+         * The theme of the shell: {@code mosaikit}, {@code pa} for public administrations in the style
+         * of Bootstrap Italia (AgID design guidelines), or the identifier of an active theme plugin
+         * (MK-028); the shell uses {@code mosaikit} when the theme is not available.
          */
         @WithDefault("mosaikit")
-        Theme theme();
-
-        /** The themes of the user interface, with the names of {@code @mosaikit/ui}. */
-        enum Theme {
-            MOSAIKIT,
-            PA;
-
-            /** The name of the theme in {@code @mosaikit/ui}. */
-            public String id() {
-                return name().toLowerCase(java.util.Locale.ROOT);
-            }
-        }
+        String theme();
     }
 
     /**

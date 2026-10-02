@@ -16,13 +16,28 @@
       "type": "string",
       "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
     },
-    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
-    "description": { "type": "string" },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "description": {
+      "type": "string"
+    },
     "kind": {
       "description": "What the plugin brings: one value or a list.",
       "oneOf": [
-        { "$ref": "#/$defs/kind" },
-        { "type": "array", "items": { "$ref": "#/$defs/kind" }, "minItems": 1, "uniqueItems": true }
+        {
+          "$ref": "#/$defs/kind"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kind"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
       ]
     },
     "platform": {
@@ -33,32 +48,48 @@
     "requires": {
       "description": "Required plugins with their accepted versions.",
       "type": "object",
-      "propertyNames": { "$ref": "#/$defs/dottedName" },
-      "additionalProperties": { "type": "string", "minLength": 1 }
+      "propertyNames": {
+        "$ref": "#/$defs/dottedName"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "frontend": {
       "type": "object",
       "required": ["entry"],
       "properties": {
-        "entry": { "$ref": "#/$defs/relativePath" },
-        "isolation": { "enum": ["module", "iframe"], "default": "module" },
+        "entry": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "isolation": {
+          "enum": ["module", "iframe"],
+          "default": "module"
+        },
         "bridge": {
           "description": "What the frontend may do through the shell in an isolated iframe (MK-014).",
           "type": "object",
           "properties": {
             "publishes": {
               "type": "array",
-              "items": { "$ref": "#/$defs/topic" },
+              "items": {
+                "$ref": "#/$defs/topic"
+              },
               "uniqueItems": true
             },
             "subscribes": {
               "type": "array",
-              "items": { "$ref": "#/$defs/topic" },
+              "items": {
+                "$ref": "#/$defs/topic"
+              },
               "uniqueItems": true
             },
             "services": {
               "type": "array",
-              "items": { "enum": ["api", "data"] },
+              "items": {
+                "enum": ["api", "data"]
+              },
               "uniqueItems": true
             }
           },
@@ -67,7 +98,10 @@
         "points": {
           "description": "Extension points the frontend offers to other plugins, which contribute to them (MK-020).",
           "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9-]*(\\.[a-z][a-zA-Z0-9-]*)+$" },
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9-]*(\\.[a-z][a-zA-Z0-9-]*)+$"
+          },
           "uniqueItems": true
         }
       },
@@ -78,8 +112,20 @@
       "type": "object",
       "required": ["jar", "api"],
       "properties": {
-        "jar": { "allOf": [{ "$ref": "#/$defs/relativePath" }, { "pattern": "\\.jar$" }] },
-        "api": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,39}$" }
+        "jar": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/relativePath"
+            },
+            {
+              "pattern": "\\.jar$"
+            }
+          ]
+        },
+        "api": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,39}$"
+        }
       },
       "additionalProperties": false
     },
@@ -92,7 +138,10 @@
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" }
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          }
         }
       },
       "additionalProperties": false
@@ -101,21 +150,34 @@
       "type": "object",
       "required": ["schema"],
       "properties": {
-        "schema": { "type": "string", "pattern": "^p_[a-z][a-z0-9_]{0,59}$" },
-        "migrations": { "$ref": "#/$defs/relativePath", "default": "db" }
+        "schema": {
+          "type": "string",
+          "pattern": "^p_[a-z][a-z0-9_]{0,59}$"
+        },
+        "migrations": {
+          "$ref": "#/$defs/relativePath",
+          "default": "db"
+        }
       },
       "additionalProperties": false
     },
     "contributes": {
       "description": "Contributions grouped by extension point.",
       "type": "object",
-      "propertyNames": { "$ref": "#/$defs/dottedName" },
+      "propertyNames": {
+        "$ref": "#/$defs/dottedName"
+      },
       "additionalProperties": {
         "type": "array",
         "items": {
           "type": "object",
           "required": ["id"],
-          "properties": { "id": { "type": "string", "minLength": 1 } }
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         }
       }
     },
@@ -126,32 +188,169 @@
         "type": "object",
         "required": ["name", "title", "risk", "call"],
         "properties": {
-          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$" },
-          "title": { "type": "string", "minLength": 1 },
-          "description": { "type": "string" },
-          "risk": { "enum": ["read", "write", "execute"] },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,47}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "risk": {
+            "enum": ["read", "write", "execute"]
+          },
           "input": {
             "description": "JSON Schema of the arguments, with type object.",
             "type": "object",
-            "properties": { "type": { "const": "object" } }
+            "properties": {
+              "type": {
+                "const": "object"
+              }
+            }
           },
           "call": {
             "type": "object",
             "required": ["path"],
             "properties": {
-              "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
-              "path": { "$ref": "#/$defs/relativePath" }
+              "method": {
+                "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+              },
+              "path": {
+                "$ref": "#/$defs/relativePath"
+              }
             },
             "additionalProperties": false
           }
         },
         "additionalProperties": false
       }
+    },
+    "theme": {
+      "description": "The theme of a plugin of kind theme (MK-028): colors of the light and dark schemes; what is left out comes from the default theme.",
+      "type": "object",
+      "required": ["title"],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "font": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "light": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "brand": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "background": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "surface": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "foreground": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "muted": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "line": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "danger": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "success": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "warning": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "focus": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            }
+          }
+        },
+        "dark": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "brand": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "background": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "surface": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "foreground": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "muted": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "line": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "danger": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "success": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "warning": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "focus": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            }
+          }
+        }
+      }
     }
   },
   "$defs": {
-    "kind": { "enum": ["app", "extension", "service", "theme", "locale", "auth"] },
-    "dottedName": { "type": "string", "pattern": "^[a-z][a-zA-Z0-9-]*(\\.[a-z][a-zA-Z0-9-]*)+$" },
+    "kind": {
+      "enum": ["app", "extension", "service", "theme", "locale", "auth"]
+    },
+    "dottedName": {
+      "type": "string",
+      "pattern": "^[a-z][a-zA-Z0-9-]*(\\.[a-z][a-zA-Z0-9-]*)+$"
+    },
     "topic": {
       "description": "Dotted event topic, or a prefix ending with .*",
       "type": "string",
@@ -160,7 +359,9 @@
     "relativePath": {
       "type": "string",
       "minLength": 1,
-      "not": { "pattern": "(^/|\\\\|:|(^|/)\\.\\.(/|$))" }
+      "not": {
+        "pattern": "(^/|\\\\|:|(^|/)\\.\\.(/|$))"
+      }
     }
   }
 }

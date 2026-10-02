@@ -8,6 +8,11 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Theme plugins (MK-028): a plugin of kind `theme` declares `theme` (title, font, radius, light and
+  dark colors); it is active at once, offered in the personal settings and usable as the theme of
+  the installation (`mosaikit.ui.theme=<plugin id>`); what it leaves out comes from the default
+  theme (`/api/v1/system/themes`). New sample `sample-theme`.
+
 - Personal settings (MK-027): appearance (as the device, light, dark, high contrast), theme,
   language (English or Italian, for the shell and for the plugins through `context.locale`),
   organization and the apps of the app bar, kept with the account

@@ -36,6 +36,7 @@ HTTP Basic or bearer tokens.
 | Method and path | Who | Purpose |
 |---|---|---|
 | `GET /api/v1/system/info` | anyone | product, version, active plugins, theme |
+| `GET /api/v1/system/themes` | anyone | the themes of the active theme plugins (MK-028): id, title, font, radius, light and dark colors |
 | `GET /api/v1/identity/sign-in-options` | anyone | how a person signs in |
 | `GET /api/v1/accounts/registration-options` | anyone | whether the sign-in page offers to create an account, and in which organizations (MK-048) |
 | `POST /api/v1/accounts/registrations` | anyone, when registration is on and the organization allows it | self-registration: 201 with the account, or 202 when a link was sent to confirm the address first |

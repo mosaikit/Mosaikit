@@ -58,6 +58,16 @@ export interface Account {
   readonly preferences?: Preferences;
 }
 
+/** A theme of a theme plugin (MK-028): only the values it sets. */
+export interface PluginTheme {
+  readonly id: string;
+  readonly title: string;
+  readonly font: string | null;
+  readonly radius: number | null;
+  readonly light: Readonly<Record<string, string>>;
+  readonly dark: Readonly<Record<string, string>>;
+}
+
 /** The personal settings of a person (MK-027); `null` means the default of the installation. */
 export interface Preferences {
   readonly theme: string | null;
@@ -269,6 +279,11 @@ export class KernelClient {
   /** Sends the confirmation link to an address again; the kernel never says if it exists. */
   async resendConfirmation(email: string): Promise<void> {
     await this.send('/api/v1/accounts/confirmations/requests', { email });
+  }
+
+  /** The themes of the active theme plugins (MK-028); anyone can read them, before signing in too. */
+  themes(): Promise<PluginTheme[]> {
+    return this.getJson<PluginTheme[]>('/api/v1/system/themes');
   }
 
   /** The personal settings of the signed-in person (MK-027). */

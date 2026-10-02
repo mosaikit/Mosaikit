@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
-import { applyTheme, isThemeName, themes as uiThemes } from '@mosaikit/ui';
+import { applyTheme, isThemeName, registerTheme, themes as uiThemes } from '@mosaikit/ui';
 import { contributionsTo, stringAttribute, type FrontendPlugin } from '@mosaikit/sdk';
 import { LitElement, css, html, nothing, svg, type PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
@@ -477,12 +477,16 @@ export class MkShell extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     setLanguage(this.shellLanguage);
-    this.addEventListener('mk-plugins-changed', () => void this.reloadPlugins());
+    // A theme plugin installed from the Plugins page is active at once (MK-028).
+    this.addEventListener('mk-plugins-changed', () => {
+      void this.reloadPlugins().then(() => this.loadThemes());
+    });
     window.addEventListener('popstate', this.onPopState);
     this.client.systemInfo().then(
       (info) => {
         this.info = info;
         this.applyAppearance();
+        void this.loadThemes();
       },
       () => {
         this.error = 'The kernel is not reachable.';
@@ -701,6 +705,28 @@ export class MkShell extends LitElement {
     this.menuOpen = false;
     history.pushState(null, '', route);
     this.path = route;
+  }
+
+  /**
+   * Registers the themes of the active theme plugins, so that people can choose them and the
+   * installation can name one as its theme; a missing value comes from the default theme.
+   */
+  private async loadThemes(): Promise<void> {
+    try {
+      for (const theme of await this.client.themes()) {
+        registerTheme(theme.id, {
+          title: theme.title,
+          ...(theme.font ? { font: theme.font } : {}),
+          ...(theme.radius === null ? {} : { radius: theme.radius }),
+          light: theme.light,
+          dark: theme.dark,
+        });
+      }
+      this.applyAppearance();
+      this.requestUpdate();
+    } catch {
+      // Without them the built-in themes remain.
+    }
   }
 
   /** The personal settings page (MK-027). */
