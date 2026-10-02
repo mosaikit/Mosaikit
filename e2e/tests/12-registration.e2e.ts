@@ -25,7 +25,11 @@ async function register(page: Page, email: string): Promise<void> {
 }
 
 async function signInWithPassword(page: Page, email: string): Promise<void> {
-  await page.getByRole('button', { name: 'Sign in with a password' }).click();
+  // After the link of the mail the page asks for the password at once.
+  const toPassword = page.getByRole('button', { name: 'Sign in with a password' });
+  if (await toPassword.isVisible()) {
+    await toPassword.click();
+  }
   await page.getByLabel('Email or username').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();

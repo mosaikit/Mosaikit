@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { expect, test } from '@playwright/test';
 import { ADMIN, ANNA, BASE_URL, MARIO } from '../support/env.js';
+import { confirmationLink } from '../support/mail.js';
 import { api, apps, openApp, plugins, signIn, unique } from '../support/shell.js';
 
 const ID = 'dev.mosaikit.sample.todo';
@@ -66,6 +67,13 @@ async function otherOrganizationPerson(): Promise<{ slug: string; authorization:
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ organization: slug, email, displayName: 'Luca Verdi', password }),
+  });
+  // Self-registered people confirm their address before signing in (MK-048).
+  const token = new URL(await confirmationLink(email)).searchParams.get('confirm');
+  await fetch(`${BASE_URL}/api/v1/accounts/confirmations`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token }),
   });
   return { slug, authorization: `Basic ${Buffer.from(`${email}:${password}`).toString('base64')}` };
 }
