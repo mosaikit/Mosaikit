@@ -11,17 +11,20 @@
  * The database lives in .dev/postgres and survives restarts.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { rmSync } from 'node:fs';
+import { existsSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startFakeModel } from '../e2e/support/fake-model.ts';
-import { startPostgres } from './postgres.ts';
+import { startFakeSmtp } from './smtp.ts';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WINDOWS = process.platform === 'win32';
 const PORT = Number(process.env.MOSAIKIT_DEV_PORT ?? '8080');
 const DB_PORT = Number(process.env.MOSAIKIT_DEV_DB_PORT ?? '54330');
 const MODEL_PORT = Number(process.env.MOSAIKIT_DEV_MODEL_PORT ?? '18092');
+const SMTP_PORT = Number(process.env.MOSAIKIT_DEV_SMTP_PORT ?? '18025');
+/** The latest confirmation link sent to each address, read by the fake mail server. */
+const links = new Map<string, string>();
 const ADMIN = { user: 'admin', password: 'admin-dev-only' };
 const PEOPLE = [
   { email: 'mario.rossi@example.org', name: 'Mario Rossi' },
@@ -66,6 +69,18 @@ function buildPluginApi(): void {
   }
 }
 
+/** The token of the confirmation link sent to an address, once the mail arrived. */
+async function linkFor(email: string): Promise<string> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const link = links.get(email);
+    if (link) {
+      return new URL(link).searchParams.get('confirm') ?? '';
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`No confirmation mail for ${email}`);
+}
+
 async function seed(): Promise<void> {
   const base = `http://localhost:${String(PORT)}`;
   for (;;) {
@@ -85,7 +100,7 @@ async function seed(): Promise<void> {
     body: JSON.stringify({ ...ORGANIZATION, selfRegistration: true }),
   });
   for (const person of PEOPLE) {
-    await fetch(`${base}/api/v1/accounts/registrations`, {
+    const registered = await fetch(`${base}/api/v1/accounts/registrations`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -95,6 +110,15 @@ async function seed(): Promise<void> {
         password: PEOPLE_PASSWORD,
       }),
     });
+    // The demo people confirm their address at once, with the link of the fake mail server.
+    if (registered.status === 202) {
+      const token = await linkFor(person.email);
+      await fetch(`${base}/api/v1/accounts/confirmations`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+    }
   }
   log(`ready on ${base}`);
   log(`  admin / ${ADMIN.password} (platform administrator)`);
@@ -103,7 +127,27 @@ async function seed(): Promise<void> {
   }
 }
 
+/**
+ * Stops with a clear message when the npm packages are missing or older than package-lock.json,
+ * as after a git pull that changed the dependencies.
+ */
+function checkPackages(): void {
+  const installed = join(ROOT, 'node_modules', '.package-lock.json');
+  if (
+    !existsSync(installed) ||
+    statSync(installed).mtimeMs < statSync(join(ROOT, 'package-lock.json')).mtimeMs
+  ) {
+    log(
+      'the npm packages are missing or older than package-lock.json: run "npm ci", then "npm run dev"',
+    );
+    process.exit(1);
+  }
+}
+
 async function main(): Promise<void> {
+  checkPackages();
+  // Imported only now: it needs the package embedded-postgres.
+  const { startPostgres } = await import('./postgres.ts');
   const directory = join(ROOT, '.dev', 'postgres');
   if (process.argv.includes('--reset')) {
     rmSync(directory, { recursive: true, force: true });
@@ -114,6 +158,17 @@ async function main(): Promise<void> {
   log(`PostgreSQL on 127.0.0.1:${String(database.port)} (.dev/postgres)`);
   const model = await startFakeModel(MODEL_PORT);
   log(`fake language model on http://localhost:${String(MODEL_PORT)}/v1`);
+  // Mails are not delivered: their links are printed here (and kept in .dev/mail).
+  const smtp = await startFakeSmtp(SMTP_PORT, join(ROOT, '.dev', 'mail'), (mail) => {
+    const link = /https?:\/\/\S+\?confirm=[\w-]+/.exec(mail.raw)?.[0];
+    for (const address of mail.to) {
+      if (link) {
+        links.set(address, link);
+      }
+      log(`mail to ${address}: "${mail.subject}"${link ? ` ${link}` : ''}`);
+    }
+  });
+  log(`fake mail server on localhost:${String(SMTP_PORT)}`);
 
   const kernel = spawn(
     mvnw,
@@ -127,6 +182,9 @@ async function main(): Promise<void> {
       `-Dquarkus.datasource.password=${database.password}`,
       `-Dmosaikit.assistant.url=http://localhost:${String(MODEL_PORT)}/v1`,
       '-Dmosaikit.assistant.model=dev-fake-model',
+      '-Dquarkus.mailer.host=localhost',
+      `-Dquarkus.mailer.port=${String(SMTP_PORT)}`,
+      '-Dquarkus.mailer.start-tls=DISABLED',
     ],
     { cwd: ROOT, stdio: 'inherit', shell: WINDOWS },
   );
@@ -143,6 +201,7 @@ async function main(): Promise<void> {
       kernel.kill();
     }
     model.close();
+    await smtp.close();
     await database.stop();
     process.exit(0);
   };

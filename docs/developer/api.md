@@ -37,7 +37,10 @@ HTTP Basic or bearer tokens.
 |---|---|---|
 | `GET /api/v1/system/info` | anyone | product, version, active plugins, theme |
 | `GET /api/v1/identity/sign-in-options` | anyone | how a person signs in |
-| `POST /api/v1/accounts/registrations` | anyone, when the organization allows it | self-registration |
+| `GET /api/v1/accounts/registration-options` | anyone | whether the sign-in page offers to create an account, and in which organizations (MK-048) |
+| `POST /api/v1/accounts/registrations` | anyone, when registration is on and the organization allows it | self-registration: 201 with the account, or 202 when a link was sent to confirm the address first |
+| `POST /api/v1/accounts/confirmations` | anyone | confirm an address with the token of the link (`{"token": "…"}`); 404 when the link was used or expired |
+| `POST /api/v1/accounts/confirmations/requests` | anyone | send the link again (`{"email": "…"}`); always 202 |
 | `GET /api/v1/accounts/me` | signed in | the current account |
 | `GET /api/v1/accounts/session` | anyone | the account of the session of the shell, or 204 without one |
 | `DELETE /api/v1/accounts/session` | anyone | end the session of the shell, and forget the browser if it was remembered |
@@ -56,6 +59,7 @@ HTTP Basic or bearer tokens.
 | `POST /api/v1/plugins/packages` | `platform-admin` | install an uploaded package (`application/zip`); 202, active at once or at the next start (`restartRequired`) |
 | `GET, POST /api/v1/data/{plugin}/{collection}` | signed in, with an organization | the documents of a collection declared by an active plugin, newest first (`offset`, `limit`); add one (MK-046) |
 | `GET, PUT, DELETE /api/v1/data/{plugin}/{collection}/{id}` | signed in, with an organization | one document; `PUT` with `If-Match: <version>` answers 409 if it changed since |
+| `GET, PUT /api/v1/platform/settings` | `platform-admin` | the settings of the platform: `{"registration": true}` turns self-registration on or off (audited) |
 | `GET /api/v1/audit-events` | `platform-admin` | the latest audit events (`limit`, `organization`) |
 | `GET /api/v1/ai/tools` | signed in, with an organization | the tools of the active plugins (MK-015) |
 | `POST /api/v1/ai/tools/{tool}/invocations` | signed in, with an organization | invoke a tool: 200 with the result, or 202 with a draft |

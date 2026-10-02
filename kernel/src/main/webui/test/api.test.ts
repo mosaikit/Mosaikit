@@ -45,7 +45,8 @@ describe('KernelClient (MK-008)', () => {
 
     await expect(client.signIn('ada@example.org', 'wrong')).rejects.toMatchObject({
       status: 401,
-      message: 'The email or the password is not correct.',
+      message:
+        'The email or the password is not correct, or the email address is not confirmed yet.',
     });
     expect(client.signedIn).toBe(false);
   });

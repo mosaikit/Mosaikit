@@ -79,7 +79,8 @@ public class RememberMe {
         return tokens.findByTokenDigest(digest(token))
                 .filter(found -> found.getExpiresAt().isAfter(now))
                 .flatMap(found -> accounts.findById(found.getAccountId()))
-                .filter(account -> account.getPasswordHash().isPresent());
+                .filter(account -> account.getPasswordHash().isPresent())
+                .filter(UserAccount::isEmailConfirmed);
     }
 
     /** Deletes a token, so that its cookie signs nobody in any more. */

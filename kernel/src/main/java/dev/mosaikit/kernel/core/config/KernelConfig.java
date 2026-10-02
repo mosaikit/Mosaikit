@@ -41,7 +41,24 @@ public interface KernelConfig {
         /** How long "remember me" keeps a person signed in on a browser, unless they sign out. */
         @WithDefault("30d")
         Duration rememberFor();
+
+        /**
+         * Whether self-registered people confirm their email address with a link sent by mail
+         * before they sign in. The mail server is set with {@code quarkus.mailer.*}.
+         */
+        @WithDefault("true")
+        boolean confirmEmail();
+
+        /** How long the link that confirms an email address works. */
+        @WithDefault("24h")
+        Duration confirmationValidFor();
     }
+
+    /**
+     * The address of the installation as people reach it, such as {@code https://mosaikit.example.org},
+     * for the links in mails. When absent, the address of the request is used.
+     */
+    Optional<URI> publicUrl();
 
     /** Settings of the user interface. */
     interface Ui {

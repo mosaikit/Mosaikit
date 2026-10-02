@@ -1,0 +1,141 @@
+// SPDX-FileCopyrightText: 2026 Massimo Antonini
+// SPDX-License-Identifier: MPL-2.0
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer, type Server, type Socket } from 'node:net';
+import { join } from 'node:path';
+
+/** A message received by the fake mail server. */
+export interface Mail {
+  readonly from: string;
+  readonly to: readonly string[];
+  readonly subject: string;
+  /** The raw message, headers and body. */
+  readonly raw: string;
+}
+
+export interface FakeSmtp {
+  readonly port: number;
+  close(): Promise<void>;
+}
+
+/**
+ * A mail server for development and tests: it accepts every message over plain SMTP, without
+ * authentication, and writes it to `directory` as `<n>.eml`, so that tests in other processes can
+ * read it ({@link mails}). It delivers nothing.
+ */
+export async function startFakeSmtp(
+  port: number,
+  directory: string,
+  onMail: (mail: Mail) => void = () => undefined,
+): Promise<FakeSmtp> {
+  mkdirSync(directory, { recursive: true });
+  let count = readdirSync(directory).filter((name) => name.endsWith('.eml')).length;
+  const sockets = new Set<Socket>();
+
+  const server: Server = createServer((socket) => {
+    sockets.add(socket);
+    socket.on('close', () => sockets.delete(socket));
+    socket.setEncoding('utf8');
+    let buffer = '';
+    let data: string[] | undefined;
+    let from = '';
+    let to: string[] = [];
+    const reply = (line: string): void => {
+      socket.write(`${line}\r\n`);
+    };
+    reply('220 localhost fake SMTP of Mosaikit');
+    socket.on('data', (chunk: string) => {
+      buffer += chunk;
+      let end: number;
+      while ((end = buffer.indexOf('\r\n')) >= 0) {
+        const line = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        if (data) {
+          if (line === '.') {
+            const raw = data.join('\r\n');
+            const subject = /^Subject: (.*)$/im.exec(raw)?.[1]?.trim() ?? '';
+            const mail = { from, to, subject, raw: unfold(raw) };
+            count += 1;
+            writeFileSync(join(directory, `${String(count).padStart(5, '0')}.eml`), raw);
+            onMail(mail);
+            data = undefined;
+            reply('250 OK: queued');
+          } else {
+            data.push(line.startsWith('..') ? line.slice(1) : line);
+          }
+          continue;
+        }
+        const command = line.slice(0, 4).toUpperCase();
+        if (command === 'EHLO') {
+          reply('250-localhost');
+          reply('250 8BITMIME');
+        } else if (command === 'HELO') {
+          reply('250 localhost');
+        } else if (command === 'MAIL') {
+          from = /<([^>]*)>/.exec(line)?.[1] ?? '';
+          to = [];
+          reply('250 OK');
+        } else if (command === 'RCPT') {
+          to.push(/<([^>]*)>/.exec(line)?.[1] ?? '');
+          reply('250 OK');
+        } else if (command === 'DATA') {
+          data = [];
+          reply('354 End data with <CR><LF>.<CR><LF>');
+        } else if (command === 'QUIT') {
+          reply('221 Bye');
+          socket.end();
+        } else if (command === 'RSET' || command === 'NOOP') {
+          reply('250 OK');
+        } else {
+          reply('502 Command not implemented');
+        }
+      }
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve));
+  return {
+    port,
+    close: () =>
+      new Promise<void>((resolve) => {
+        for (const socket of sockets) {
+          socket.destroy();
+        }
+        server.close(() => {
+          resolve();
+        });
+      }),
+  };
+}
+
+/** The messages written by the fake mail server to `directory`, oldest first. */
+export function mails(directory: string): Mail[] {
+  let names: string[];
+  try {
+    names = readdirSync(directory).filter((name) => name.endsWith('.eml'));
+  } catch {
+    return [];
+  }
+  return names.sort().map((name) => {
+    const raw = readFileSync(join(directory, name), 'utf8');
+    const header = (field: string): string =>
+      new RegExp(`^${field}: (.*)$`, 'im').exec(raw)?.[1]?.trim() ?? '';
+    return {
+      from: header('From'),
+      to: header('To')
+        .split(',')
+        .map((address) => address.trim()),
+      subject: header('Subject'),
+      raw: unfold(raw),
+    };
+  });
+}
+
+/**
+ * The body as plain text: quoted-printable soft line breaks joined and `=XX` decoded, so that a
+ * link can be found in it.
+ */
+function unfold(raw: string): string {
+  return raw
+    .replace(/=\r?\n/g, '')
+    .replace(/=([0-9A-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+}

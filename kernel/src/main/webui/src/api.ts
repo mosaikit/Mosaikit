@@ -14,6 +14,25 @@ export interface SystemInfo {
   readonly rememberDays: number;
 }
 
+/** Whether the sign-in page offers to create an account (MK-048). */
+export interface RegistrationOptions {
+  readonly enabled: boolean;
+  readonly organizations: readonly { readonly slug: string; readonly name: string }[];
+}
+
+/** A self-registration. */
+export interface Registration {
+  readonly organization: string;
+  readonly email: string;
+  readonly displayName: string;
+  readonly password: string;
+}
+
+/** The settings of the platform that administrators change from the interface. */
+export interface PlatformSettings {
+  readonly registration: boolean;
+}
+
 /** An organization of the signed-in person (MK-017). */
 export interface Membership {
   readonly organizationId: string;
@@ -159,7 +178,7 @@ export class KernelClient {
         response.status,
         'Unauthorized',
         response.status === 401
-          ? 'The email or the password is not correct.'
+          ? 'The email or the password is not correct, or the email address is not confirmed yet.'
           : 'Sign-in failed. Try again.',
       );
     }
@@ -208,6 +227,57 @@ export class KernelClient {
   /** Replaces the access token after a refresh. */
   useToken(accessToken: string): void {
     this.authorization = `Bearer ${accessToken}`;
+  }
+
+  /** Whether people can create their own account, and in which organizations. */
+  registrationOptions(): Promise<RegistrationOptions> {
+    return this.getJson<RegistrationOptions>('/api/v1/accounts/registration-options');
+  }
+
+  /**
+   * Creates an account; resolves to `true` when a link was sent to confirm the address before the
+   * person can sign in.
+   */
+  async register(registration: Registration): Promise<boolean> {
+    const response = await this.request('/api/v1/accounts/registrations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(registration),
+    });
+    if (!response.ok) {
+      throw await toError(response);
+    }
+    return response.status === 202;
+  }
+
+  /** Confirms an email address with the token of the link sent to it. */
+  async confirmEmail(token: string): Promise<void> {
+    await this.send('/api/v1/accounts/confirmations', { token });
+  }
+
+  /** Sends the confirmation link to an address again; the kernel never says if it exists. */
+  async resendConfirmation(email: string): Promise<void> {
+    await this.send('/api/v1/accounts/confirmations/requests', { email });
+  }
+
+  /** The settings of the platform, for platform administrators. */
+  platformSettings(): Promise<PlatformSettings> {
+    return this.getJson<PlatformSettings>('/api/v1/platform/settings');
+  }
+
+  changePlatformSettings(settings: PlatformSettings): Promise<PlatformSettings> {
+    return this.sendJson<PlatformSettings>('/api/v1/platform/settings', 'PUT', settings);
+  }
+
+  private async send(path: string, body: unknown): Promise<void> {
+    const response = await this.request(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw await toError(response);
+    }
   }
 
   /** How the person with this email address signs in on this site. */

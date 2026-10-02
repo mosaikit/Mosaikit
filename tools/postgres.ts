@@ -1,9 +1,28 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
 import EmbeddedPostgres from 'embedded-postgres';
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+
+/** pg_ctl of the binaries that npm installed for this platform. */
+function pgCtl(): string | undefined {
+  const platform = `${process.platform === 'win32' ? 'windows' : process.platform}-${process.arch}`;
+  const file = join(
+    ROOT,
+    'node_modules',
+    '@embedded-postgres',
+    platform,
+    'native',
+    'bin',
+    process.platform === 'win32' ? 'pg_ctl.exe' : 'pg_ctl',
+  );
+  return existsSync(file) ? file : undefined;
+}
 
 /**
  * PostgreSQL 18 for development and the end-to-end tests, from the binaries that npm installs
@@ -76,6 +95,17 @@ export async function startPostgres(options: {
     port,
     user: USER,
     password: PASSWORD,
-    stop: () => server.stop(),
+    stop: async () => {
+      // A fast shutdown asks the server to end its own processes. The package kills it instead
+      // (taskkill on Windows), which can leave its I/O workers running and the files of
+      // node_modules locked, so that the next npm ci fails.
+      const ctl = pgCtl();
+      if (ctl) {
+        spawnSync(ctl, ['stop', '-D', options.directory, '-m', 'fast', '-w', '-t', '30'], {
+          stdio: 'ignore',
+        });
+      }
+      await server.stop();
+    },
   };
 }

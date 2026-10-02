@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 package dev.mosaikit.kernel.core.account;
 
+import dev.mosaikit.kernel.core.config.KernelConfig;
 import dev.mosaikit.kernel.core.error.ConflictException;
 import dev.mosaikit.kernel.core.error.ForbiddenOperationException;
 import dev.mosaikit.kernel.core.error.ResourceNotFoundException;
@@ -11,9 +12,11 @@ import dev.mosaikit.kernel.core.organization.OrganizationMembers;
 import dev.mosaikit.kernel.core.organization.OrganizationService;
 import dev.mosaikit.kernel.core.security.PasswordHasher;
 import dev.mosaikit.kernel.core.security.Roles;
+import dev.mosaikit.kernel.core.settings.PlatformSettingsService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.transaction.Transactional;
+import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Comparator;
@@ -39,6 +42,9 @@ public class AccountService {
     private final OrganizationMembers members;
     private final OrganizationService organizations;
     private final PasswordHasher passwordHasher;
+    private final PlatformSettingsService settings;
+    private final ConfirmationMail confirmationMail;
+    private final boolean confirmEmail;
     private final Clock clock;
 
     public AccountService(
@@ -46,16 +52,69 @@ public class AccountService {
             OrganizationMembers members,
             OrganizationService organizations,
             PasswordHasher passwordHasher,
+            PlatformSettingsService settings,
+            ConfirmationMail confirmationMail,
+            KernelConfig config,
             Clock clock) {
         this.accounts = accounts;
         this.members = members;
         this.organizations = organizations;
         this.passwordHasher = passwordHasher;
+        this.settings = settings;
+        this.confirmationMail = confirmationMail;
+        this.confirmEmail = config.accounts().confirmEmail();
         this.clock = clock;
     }
 
-    /** Registers a person in an organization that allows self-registration. */
-    public AccountView register(RegistrationRequest request) {
+    /**
+     * The outcome of a registration.
+     *
+     * @param confirmationSent whether a link was sent to confirm the address, before the person can
+     *     sign in
+     */
+    public record Registration(AccountView account, boolean confirmationSent) {}
+
+    /**
+     * Whether people can register, and in which organizations: those that allow self-registration
+     * with a password, while the administrator has not turned registration off.
+     */
+    public RegistrationOptions registrationOptions() {
+        if (!settings.registrationEnabled()) {
+            return new RegistrationOptions(false, List.of());
+        }
+        List<RegistrationOptions.Choice> open = organizations.all().stream()
+                .filter(Organization::isSelfRegistration)
+                .filter(organization -> organization.getSignIn().allowsPassword())
+                .map(organization -> new RegistrationOptions.Choice(organization.getSlug(), organization.getName()))
+                .toList();
+        return new RegistrationOptions(!open.isEmpty(), open);
+    }
+
+    /** Sends a new confirmation link to a registered address that is not confirmed yet. */
+    public void resendConfirmation(String email, URI base) {
+        accounts.findByUsername(normalize(email))
+                .filter(account -> !account.isEmailConfirmed())
+                .filter(account -> account.getPasswordHash().isPresent())
+                .ifPresent(account -> confirmationMail.send(account, base));
+    }
+
+    /** Confirms the address of the link; false when the link is unknown, used or expired. */
+    public boolean confirm(String token) {
+        return confirmationMail.confirm(token).isPresent();
+    }
+
+    /**
+     * Registers a person in an organization that allows self-registration. With {@code
+     * mosaikit.accounts.confirm-email} the account signs in only after the link sent to the address
+     * is opened.
+     *
+     * @param base the address of the installation, for the link
+     */
+    public Registration register(RegistrationRequest request, URI base) {
+        if (!settings.registrationEnabled()) {
+            throw new ForbiddenOperationException(
+                    "Self-registration is turned off on this installation. Ask the administrator for an account.");
+        }
         Organization organization = organizations.require(request.organization());
         if (!organization.isSelfRegistration()) {
             throw new ForbiddenOperationException("Organization '" + organization.getSlug()
@@ -75,10 +134,17 @@ public class AccountService {
                 passwordHasher.hash(request.password().toCharArray()),
                 Set.of(),
                 Instant.now(clock));
+        if (confirmEmail) {
+            account.requireConfirmation();
+        }
         accounts.insert(account);
         members.insert(new OrganizationMember(
                 account.getId(), organization.getId(), Set.of(Roles.ORGANIZATION_USER), Instant.now(clock)));
-        return view(account, Set.of(Roles.ORGANIZATION_USER), Optional.of(organization.getId()));
+        if (confirmEmail) {
+            confirmationMail.send(account, base);
+        }
+        return new Registration(
+                view(account, Set.of(Roles.ORGANIZATION_USER), Optional.of(organization.getId())), confirmEmail);
     }
 
     /** Creates the platform administrator when the installation has no account yet. */

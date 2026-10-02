@@ -20,6 +20,9 @@ export const CONTROL_PORT = Number(env('E2E_CONTROL_PORT', '18090'));
 export const BASE_URL = `http://localhost:${String(KERNEL_PORT)}`;
 export const CONTROL_URL = `http://localhost:${String(CONTROL_PORT)}`;
 export const MODEL_URL = `http://localhost:${String(MODEL_PORT)}/v1`;
+/** The fake mail server (tools/smtp.ts), which writes the mails of the kernel to MAIL. */
+export const SMTP_PORT = Number(env('E2E_SMTP_PORT', '18093'));
+export const MAIL = join(WORK, 'mail');
 
 /**
  * The database of the test installation: E2E_DB_URL when set, otherwise the PostgreSQL that the
