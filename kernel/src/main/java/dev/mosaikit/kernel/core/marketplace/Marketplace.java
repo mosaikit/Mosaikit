@@ -74,7 +74,9 @@ public class Marketplace {
         this.registry = registry;
         this.sources = sources;
         this.json = json;
-        this.catalogs = config.marketplace().sources().orElse(List.of());
+        this.catalogs = config.marketplace().sources().orElse(List.of()).stream()
+                .map(Marketplace::located)
+                .toList();
         this.maxBytes = config.marketplace().maxPackageBytes();
     }
 
@@ -273,6 +275,23 @@ public class Marketplace {
                         InstalledPlugin::key,
                         plugin -> plugin.manifest().orElseThrow().version().toString(),
                         (first, second) -> first));
+    }
+
+    /**
+     * A catalog directory as an absolute URI: a relative path ({@code catalog/} or {@code
+     * file:catalog/}) is a directory of the installation, the working directory of the kernel, as for
+     * {@code mosaikit.plugins.directory}; other URIs stay as they are.
+     */
+    static URI located(URI source) {
+        String scheme = source.getScheme();
+        String path = scheme == null
+                ? source.getPath()
+                : "file".equalsIgnoreCase(scheme) && source.isOpaque() ? source.getSchemeSpecificPart() : null;
+        if (path == null) {
+            return source;
+        }
+        URI absolute = Path.of(path).toAbsolutePath().normalize().toUri();
+        return absolute.toString().endsWith("/") ? absolute : URI.create(absolute + "/");
     }
 
     /** The name of the package of a plugin version in the plugins directory. */

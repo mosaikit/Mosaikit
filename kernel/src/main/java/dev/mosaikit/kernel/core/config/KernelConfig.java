@@ -59,8 +59,9 @@ public interface KernelConfig {
     interface Marketplace {
 
         /**
-         * Directories of catalogs, such as {@code https://plugins.example.org/stable/} or {@code
-         * file:/media/usb/mosaikit-plugins/} for an offline transfer.
+         * Directories of catalogs, such as {@code https://plugins.example.org/stable/}, {@code
+         * file:/media/usb/mosaikit-plugins/} for an offline transfer, or {@code catalog/}, a directory
+         * of the installation.
          */
         Optional<List<URI>> sources();
 

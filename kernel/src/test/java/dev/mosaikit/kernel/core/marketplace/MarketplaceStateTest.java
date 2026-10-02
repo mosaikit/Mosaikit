@@ -5,6 +5,7 @@ package dev.mosaikit.kernel.core.marketplace;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.net.URI;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,20 @@ class MarketplaceStateTest {
         assertThat(Marketplace.state("1.0.0", "1.0.0")).isEqualTo("installed");
         assertThat(Marketplace.state("1.1.0", "1.0.0")).isEqualTo("update");
         assertThat(Marketplace.state("0.9.0", "1.0.0")).isEqualTo("older");
+    }
+
+    @Test
+    void locatesRelativeCatalogsInTheInstallation() {
+        URI installation = Path.of("").toAbsolutePath().toUri();
+
+        assertThat(Marketplace.located(URI.create("catalog/"))).isEqualTo(installation.resolve("catalog/"));
+        assertThat(Marketplace.located(URI.create("catalog"))).isEqualTo(installation.resolve("catalog/"));
+        assertThat(Marketplace.located(URI.create("file:catalog/"))).isEqualTo(installation.resolve("catalog/"));
+        URI usb = Path.of("usb").toAbsolutePath().toUri();
+        // An absolute file: URI is already located.
+        assertThat(Marketplace.located(usb)).isSameAs(usb);
+        URI published = URI.create("https://mosaikit.github.io/catalog/");
+        assertThat(Marketplace.located(published)).isSameAs(published);
     }
 
     @Test

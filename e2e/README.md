@@ -35,7 +35,7 @@ for a run that starts from scratch.
 
 ## How it works
 
-- `global-setup.ts` copies `target/dist/mosaikit` and the catalog `target/dist/plugins` to
+- `global-setup.ts` copies `target/dist/mosaikit`, with its catalog `catalog/`, to
   `e2e/.work`, creates a signing key that the installation trusts and signs the catalog with it,
   starts the fake model and the installation, and creates the organization `comune-prova` with two
   people. Tests restart the installation (after installing Java plugins, or with other settings)

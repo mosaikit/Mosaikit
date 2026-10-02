@@ -13,7 +13,6 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
   BASE_URL,
   CATALOG,
@@ -41,7 +40,8 @@ export function defaultSettings(): Settings {
     'quarkus.datasource.password': DATABASE.password,
     'mosaikit.bootstrap.admin-password': ADMIN.password,
     'quarkus.http.port': new URL(BASE_URL).port,
-    'mosaikit.marketplace.sources': pathToFileURL(CATALOG).href + '/',
+    // The default of the installation: a path relative to it.
+    'mosaikit.marketplace.sources': 'catalog/',
     'mosaikit.assistant.url': MODEL_URL,
     'mosaikit.assistant.model': 'e2e-fake-model',
   };
@@ -52,13 +52,12 @@ export function defaultSettings(): Settings {
  * signing key of the tests that the installation trusts.
  */
 export function prepare(): void {
-  if (!existsSync(join(DIST, 'mosaikit')) || !existsSync(join(DIST, 'plugins', 'index.json'))) {
-    throw new Error(`Build first: ./mvnw install -DskipTests (no ${DIST}/mosaikit or plugins)`);
+  if (!existsSync(join(DIST, 'mosaikit', 'catalog', 'index.json'))) {
+    throw new Error(`Build first: ./mvnw install -DskipTests (no ${DIST}/mosaikit/catalog)`);
   }
   rmSync(WORK, { recursive: true, force: true });
   mkdirSync(WORK, { recursive: true });
   cpSync(join(DIST, 'mosaikit'), INSTALLATION, { recursive: true });
-  cpSync(join(DIST, 'plugins'), CATALOG, { recursive: true });
   // Artifacts of the CI keep no empty directory: the installation has no plugins yet.
   mkdirSync(join(INSTALLATION, 'plugins'), { recursive: true });
   if (!WINDOWS) {

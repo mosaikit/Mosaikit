@@ -58,6 +58,10 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Each installation brings the sample plugins as a signed catalog in `catalog/`, the default
+  source of the marketplace, so the Plugins page offers them at once; a catalog can be a path
+  relative to the installation. The configuration file shows the marketplace, the assistant and
+  the session of the shell.
 - End-to-end tests with Playwright (`e2e/`, `npm run e2e`, job `e2e` of the CI) on a real
   installation, one per case of the manual test plans of MK-008 and MK-020 to MK-024; releases are
   published only when they pass.
