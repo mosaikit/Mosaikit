@@ -23,7 +23,8 @@ public record AccountView(
         Set<String> roles,
         UUID organizationId,
         String organization,
-        List<MembershipView> memberships) {
+        List<MembershipView> memberships,
+        Preferences preferences) {
 
     /**
      * An organization of the person.

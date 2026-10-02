@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
+import { language } from './i18n.js';
 import {
   dataCollections,
   EventBus,
@@ -73,7 +74,10 @@ export class PluginLoader {
         contributionsTo: (point: string) =>
           plugin.points?.includes(point) ? contributionsTo(all, point) : [],
         events: this.events,
-        locale: navigator.language,
+        // Read when used: it follows the language chosen in the settings (MK-027).
+        get locale() {
+          return language();
+        },
         user,
         fetch: this.request,
         data: dataCollections(this.request, plugin.id),

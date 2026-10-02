@@ -86,7 +86,7 @@ test.describe('MK-048 Local registration confirmed by mail', () => {
     browser,
   }) => {
     await signIn(page);
-    await openApp(page, 'Settings');
+    await openApp(page, 'Platform');
     const toggle = page.getByRole('switch', { name: 'People can create their own account' });
     await expect(toggle).toBeChecked();
     try {

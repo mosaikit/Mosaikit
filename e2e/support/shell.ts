@@ -4,14 +4,19 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { ADMIN, BASE_URL, CONTROL_URL, ORGANIZATION, type Person } from './env.js';
 import type { Settings } from './installation.js';
 
-/** Signs in on the sign-in form of the shell with a local password. */
+/**
+ * Signs in on the sign-in form of the shell with a local password, in English or in Italian: the
+ * page follows the language of the browser (MK-027).
+ */
 export async function signIn(page: Page, person: Person = ADMIN): Promise<void> {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Sign in with a password' }).click();
-  await page.getByLabel('Email or username').fill(person.user);
+  await page
+    .getByRole('button', { name: /^(Sign in with a password|Accedi con una password)$/ })
+    .click();
+  await page.getByLabel(/Email or username|Email o nome utente/).fill(person.user);
   await page.getByLabel('Password', { exact: true }).fill(person.password);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible();
+  await page.getByRole('button', { name: /^(Sign in|Accedi)$/ }).click();
+  await expect(page.getByRole('heading', { name: /^(Welcome|Benvenuto)/ })).toBeVisible();
 }
 
 export const apps = (page: Page): Locator => page.getByRole('navigation', { name: 'Apps' });

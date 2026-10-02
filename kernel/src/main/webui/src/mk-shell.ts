@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
-import { applyTheme, isThemeName } from '@mosaikit/ui';
-import type { FrontendPlugin } from '@mosaikit/sdk';
+import { applyTheme, isThemeName, themes as uiThemes } from '@mosaikit/ui';
+import { contributionsTo, stringAttribute, type FrontendPlugin } from '@mosaikit/sdk';
 import { LitElement, css, html, nothing, svg, type PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import {
@@ -9,6 +9,7 @@ import {
   KernelError,
   type Account,
   type ActionDraft,
+  type Preferences,
   type Registration,
   type RegistrationOptions,
   type SystemInfo,
@@ -25,7 +26,10 @@ import './mk-admin-plugins.js';
 import './mk-admin-settings.js';
 import './mk-assistant.js';
 import './mk-plugin-frame.js';
+import './mk-settings.js';
+import type { SettingsSection } from './mk-settings.js';
 import './mk-sign-in.js';
+import { browserLanguage, isLanguage, language, setLanguage, t } from './i18n.js';
 import type { PasswordSignIn } from './mk-sign-in.js';
 import { PluginLoader, type LoadResult } from './plugin-loader.js';
 
@@ -37,7 +41,7 @@ const PLUGIN_WATCH_MS = 1_000;
 /** The pages of platform administrators: plugins (MK-022) and settings (MK-048). */
 const ADMIN_PAGES = [
   { path: '/admin/plugins', title: 'Plugins', element: 'mk-admin-plugins' },
-  { path: '/admin/settings', title: 'Settings', element: 'mk-admin-settings' },
+  { path: '/admin/settings', title: 'Platform', element: 'mk-admin-settings' },
 ] as const;
 
 /**
@@ -178,6 +182,14 @@ export class MkShell extends LitElement {
     }
     .menu .who strong {
       display: block;
+    }
+    .menu a {
+      color: var(--mk-accent);
+      font-weight: 600;
+    }
+    .menu a:focus-visible {
+      outline: 2px solid var(--mk-focus);
+      outline-offset: 2px;
     }
     /* The app bar on the left, a bottom bar on phones. */
     .rail {
@@ -446,6 +458,10 @@ export class MkShell extends LitElement {
   @state() private menuOpen = false;
   /** Why the apps could not be loaded after signing in. */
   @state() private appsError: string | undefined;
+  /** The personal settings of the signed-in person (MK-027). */
+  @state() private preferences: Preferences | undefined;
+  @state() private settingsStatus = '';
+  @state() private shellLanguage = browserLanguage();
   /** The page of the sign-in: signing in, creating an account, or waiting for the confirmation. */
   @state() private signInMode: 'sign-in' | 'register' | 'sent' = 'sign-in';
   @state() private registration: RegistrationOptions | undefined;
@@ -458,12 +474,13 @@ export class MkShell extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+    setLanguage(this.shellLanguage);
     this.addEventListener('mk-plugins-changed', () => void this.reloadPlugins());
     window.addEventListener('popstate', this.onPopState);
     this.client.systemInfo().then(
       (info) => {
         this.info = info;
-        applyTheme(isThemeName(info.theme) ? info.theme : 'mosaikit');
+        this.applyAppearance();
       },
       () => {
         this.error = 'The kernel is not reachable.';
@@ -492,7 +509,7 @@ export class MkShell extends LitElement {
     this.email = '';
     try {
       await this.client.confirmEmail(token);
-      this.notice = 'Your email address is confirmed. Sign in to start.';
+      this.notice = t('Your email address is confirmed. Sign in to start.');
     } catch (error) {
       this.error =
         error instanceof KernelError ? error.message : 'The address could not be confirmed.';
@@ -552,8 +569,8 @@ export class MkShell extends LitElement {
       <input
         type="search"
         role="combobox"
-        aria-label="Search apps and pages"
-        placeholder="Search apps and pages"
+        aria-label=${t('Search apps and pages')}
+        placeholder=${t('Search apps and pages')}
         aria-expanded=${open ? 'true' : 'false'}
         aria-controls="search-results"
         aria-autocomplete="list"
@@ -565,7 +582,7 @@ export class MkShell extends LitElement {
       />
       ${
         open
-          ? html`<ul id="search-results" role="listbox" aria-label="Apps and pages">
+          ? html`<ul id="search-results" role="listbox" aria-label=${t('Apps and pages')}>
               ${found.map(
                 (item, index) =>
                   html`<li
@@ -595,7 +612,7 @@ export class MkShell extends LitElement {
     const name = account.displayName;
     return html`<button
         class="account"
-        aria-label=${`Account: ${name}`}
+        aria-label=${t('Account: {name}', { name })}
         aria-haspopup="dialog"
         aria-expanded=${this.menuOpen ? 'true' : 'false'}
         @click=${this.toggleMenu}
@@ -604,13 +621,14 @@ export class MkShell extends LitElement {
       </button>
       ${
         this.menuOpen
-          ? html`<div class="menu" role="dialog" aria-label="Account">
+          ? html`<div class="menu" role="dialog" aria-label=${t('Account')}>
               <div class="who">
                 <span class="avatar" aria-hidden="true">${initials(name)}</span>
                 <span><strong>${name}</strong><span class="muted">${account.username}</span></span>
               </div>
               ${this.renderOrganizationSelector()}
-              <button class="secondary" @click=${this.signOut}>Sign out</button>
+              <a href="/settings" @click=${this.navigate}>${t('Settings')}</a>
+              <button class="secondary" @click=${this.signOut}>${t('Sign out')}</button>
             </div>`
           : nothing
       }`;
@@ -619,7 +637,8 @@ export class MkShell extends LitElement {
   /** The apps of the app bar, the kernel pages and the search results share this shape. */
   private destinations(): { title: string; route: string }[] {
     return [
-      { title: 'Home', route: '/' },
+      { title: t('Home'), route: '/' },
+      { title: t('Settings'), route: '/settings' },
       ...this.entries.map((entry) => ({ title: entry.title, route: entry.route })),
       ...(this.isPlatformAdmin()
         ? ADMIN_PAGES.map((page) => ({ title: page.title, route: page.path }))
@@ -682,6 +701,103 @@ export class MkShell extends LitElement {
     this.path = route;
   }
 
+  /** The personal settings page (MK-027). */
+  private renderSettings(): unknown {
+    const all = launcherEntries(this.plugins);
+    return html`<mk-settings
+      .preferences=${this.preferences}
+      .themes=${uiThemes()}
+      .apps=${all.map((entry) => ({ entry, pinned: false }))}
+      .sections=${this.settingsSections()}
+      .organizations=${this.renderOrganizationSelector()}
+      .status=${this.settingsStatus}
+      .language=${this.shellLanguage}
+      @mk-preferences=${this.savePreferences}
+    ></mk-settings>`;
+  }
+
+  /**
+   * The sections that plugins add to the settings (settings.section), for the people the plugin
+   * allows: a section with `roles` shows only to people with one of them.
+   */
+  private settingsSections(): SettingsSection[] {
+    const roles = new Set(this.account?.roles ?? []);
+    return contributionsTo(this.plugins, 'settings.section').flatMap((contribution) => {
+      const element = stringAttribute(contribution, 'element');
+      const allowed = contribution.attributes.roles;
+      if (!element || !/^[a-z][a-z0-9]*(-[a-z0-9]+)+$/.test(element)) {
+        return [];
+      }
+      if (
+        Array.isArray(allowed) &&
+        allowed.length > 0 &&
+        !allowed.some((role) => typeof role === 'string' && roles.has(role))
+      ) {
+        return [];
+      }
+      return [
+        {
+          pluginId: contribution.pluginId,
+          id: contribution.id,
+          title: stringAttribute(contribution, 'title') ?? contribution.id,
+          element,
+        },
+      ];
+    });
+  }
+
+  /** The apps of the app bar without those the person hid. */
+  private visibleEntries(entries: LauncherEntry[]): LauncherEntry[] {
+    const hidden = new Set(this.preferences?.hiddenApps ?? []);
+    return entries.filter((entry) => !hidden.has(`${entry.pluginId}/${entry.id}`));
+  }
+
+  /**
+   * Applies the theme, the appearance and the language: those of the person once signed in, those
+   * of the installation and of the browser otherwise. Plugins hear it on the event bus.
+   */
+  private applyAppearance(): void {
+    const preferences = this.preferences;
+    const installation = this.info?.theme;
+    const theme =
+      preferences?.theme && isThemeName(preferences.theme)
+        ? preferences.theme
+        : installation && isThemeName(installation)
+          ? installation
+          : 'mosaikit';
+    const appearance = preferences?.appearance ?? 'system';
+    applyTheme(theme, appearance === 'system' ? undefined : appearance);
+    const lang =
+      preferences?.language && isLanguage(preferences.language)
+        ? preferences.language
+        : browserLanguage();
+    const languageChanged = lang !== language();
+    setLanguage(lang);
+    this.shellLanguage = lang;
+    this.loader?.events.publish('shell.theme.changed', { theme, appearance });
+    if (languageChanged) {
+      this.loader?.events.publish('shell.locale.changed', { locale: lang });
+      // The app reads context.locale when it renders: mount it again in the new language.
+      this.renderRoot.querySelector('#app-host')?.replaceChildren();
+      this.renderApp();
+    }
+  }
+
+  private readonly savePreferences = async (event: CustomEvent<Preferences>): Promise<void> => {
+    const wanted = event.detail;
+    this.preferences = wanted;
+    this.entries = this.visibleEntries(launcherEntries(this.plugins));
+    this.applyAppearance();
+    try {
+      this.preferences = await this.client.changePreferences(wanted);
+      this.settingsStatus = t('Saved.');
+    } catch (error) {
+      this.settingsStatus = t('Not saved: {reason}', {
+        reason: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
   /** The sign-in page (mk-sign-in), which tells the shell what the person asked for. */
   private renderSignIn(): unknown {
     return html`<mk-sign-in
@@ -691,6 +807,7 @@ export class MkShell extends LitElement {
       .busy=${this.busy}
       .error=${this.error}
       .rememberDays=${this.info?.rememberDays ?? 30}
+      .language=${this.shellLanguage}
       @mk-continue=${this.continueWithEmail}
       @mk-use-password=${this.usePassword}
       @mk-back=${this.restartSignIn}
@@ -716,7 +833,7 @@ export class MkShell extends LitElement {
     }
     const federated = this.session !== undefined;
     return html`<label class="organization"
-      >Organization
+      >${t('Organization')}
       <select @change=${this.chooseOrganization} ?disabled=${federated}>
         ${memberships.map(
           (membership) =>
@@ -845,11 +962,13 @@ export class MkShell extends LitElement {
   private renderWorkspace(): unknown {
     const failed = this.loadResults.filter((result) => !result.loaded);
     const failures =
-      failed.length > 0 ? `${String(failed.length)} plugins could not be loaded.` : nothing;
+      failed.length > 0
+        ? t('{count} plugins could not be loaded.', { count: failed.length })
+        : nothing;
     return html`
-      <nav class="rail" aria-label="Apps">
+      <nav class="rail" aria-label=${t('Apps')}>
         <a href="/" aria-current=${this.path === '/' ? 'page' : 'false'} @click=${this.navigate}
-          >${homeIcon}<span>Home</span></a
+          >${homeIcon}<span>${t('Home')}</span></a
         >
         ${this.entries.map(
           (entry) =>
@@ -866,25 +985,29 @@ export class MkShell extends LitElement {
         ${this.appsError ? html`<p class="error" role="alert">${this.appsError}</p>` : nothing}
         ${this.renderOrganizationNotice()}
         ${
-          entryForPath(this.entries, this.path) || this.showsAdmin()
-            ? nothing
-            : html`${this.renderAssistant()}${this.renderPendingActions()}
-                <h1>Welcome, ${this.account?.displayName}</h1>
-                <p class="muted">${this.entries.length} apps available. ${failures}</p>
-                ${
-                  this.entries.length > 0
-                    ? html`<ul class="apps" aria-label="Your apps">
-                        ${this.entries.map(
-                          (entry) =>
-                            html`<li>
-                              <a href=${entry.route} @click=${this.navigate}
-                                >${appIcon(entry)}<span>${entry.title}</span></a
-                              >
-                            </li>`,
-                        )}
-                      </ul>`
-                    : nothing
-                }`
+          this.path === '/settings'
+            ? this.renderSettings()
+            : entryForPath(this.entries, this.path) || this.showsAdmin()
+              ? nothing
+              : html`${this.renderAssistant()}${this.renderPendingActions()}
+                  <h1>${t('Welcome, {name}', { name: this.account?.displayName ?? '' })}</h1>
+                  <p class="muted">
+                    ${t('{count} apps available.', { count: this.entries.length })} ${failures}
+                  </p>
+                  ${
+                    this.entries.length > 0
+                      ? html`<ul class="apps" aria-label=${t('Your apps')}>
+                          ${this.entries.map(
+                            (entry) =>
+                              html`<li>
+                                <a href=${entry.route} @click=${this.navigate}
+                                  >${appIcon(entry)}<span>${entry.title}</span></a
+                                >
+                              </li>`,
+                          )}
+                        </ul>`
+                      : nothing
+                  }`
         }
         <div id="app-host"></div>
       </main>
@@ -960,7 +1083,7 @@ export class MkShell extends LitElement {
     this.error = undefined;
     try {
       await this.client.resendConfirmation(this.sentTo);
-      this.notice = 'We sent a new link. The previous ones do not work any more.';
+      this.notice = t('We sent a new link. The previous ones do not work any more.');
     } catch (error) {
       this.error = error instanceof KernelError ? error.message : 'The link was not sent.';
     } finally {
@@ -1044,16 +1167,20 @@ export class MkShell extends LitElement {
     try {
       plugins = await this.client.shellPlugins();
     } catch (error) {
-      this.appsError = `You are signed in, but the apps could not be loaded: ${
-        error instanceof Error ? error.message : String(error)
-      } Reload the page; if it happens again, tell your administrator.`;
+      this.appsError = t(
+        'You are signed in, but the apps could not be loaded: {reason} Reload the page; if it happens again, tell your administrator.',
+        { reason: error instanceof Error ? error.message : String(error) },
+      );
     }
     const loader = new PluginLoader((path, init) => this.client.request(path, init));
     this.loadResults = await loader.loadAll(plugins, account);
     this.plugins = plugins;
     this.loader = loader;
-    this.entries = launcherEntries(plugins);
+    this.entries = this.visibleEntries(launcherEntries(plugins));
     this.account = account;
+    this.preferences = account.preferences ?? NO_PREFERENCES;
+    this.entries = this.visibleEntries(launcherEntries(plugins));
+    this.applyAppearance();
     this.email = undefined;
     this.notice = undefined;
     await this.loadDrafts();
@@ -1106,7 +1233,7 @@ export class MkShell extends LitElement {
     const results = await this.loader.loadAll(added, this.account, plugins);
     this.loadResults = [...this.loadResults, ...results];
     this.plugins = plugins;
-    this.entries = launcherEntries(plugins);
+    this.entries = this.visibleEntries(launcherEntries(plugins));
   }
 
   private readonly signOut = async (): Promise<void> => {
@@ -1131,6 +1258,8 @@ export class MkShell extends LitElement {
     this.session = undefined;
     void this.client.signOut();
     this.account = undefined;
+    this.preferences = undefined;
+    this.applyAppearance();
     this.entries = [];
     this.loadResults = [];
     this.plugins = [];
@@ -1143,6 +1272,7 @@ export class MkShell extends LitElement {
     history.pushState(null, '', link.pathname);
     this.path = link.pathname;
     this.error = undefined;
+    this.menuOpen = false;
   };
 
   /**
@@ -1305,3 +1435,10 @@ function appIcon(entry: LauncherEntry): unknown {
     ? html`<img src=${entry.icon} alt="" />`
     : html`<span class="tile" aria-hidden="true">${initials(entry.title)}</span>`;
 }
+
+const NO_PREFERENCES: Preferences = {
+  theme: null,
+  appearance: null,
+  language: null,
+  hiddenApps: [],
+};

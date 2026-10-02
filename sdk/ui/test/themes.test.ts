@@ -1,7 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { THEMES, brandVariants, isThemeName, themeTitle, themeTokens } from '../src/themes.js';
+import {
+  THEMES,
+  brandVariants,
+  isThemeName,
+  registerTheme,
+  themeTitle,
+  themeTokens,
+  themes,
+} from '../src/themes.js';
 
 /** Contrast ratio of WCAG 2.1 between two colors. */
 function contrast(a: string, b: string): number {
@@ -63,5 +71,44 @@ describe('themes (MK-026)', () => {
     expect(isThemeName('pa')).toBe(true);
     expect(isThemeName('bootstrap')).toBe(false);
     expect(isThemeName(undefined)).toBe(false);
+  });
+});
+
+describe('themes of plugins and high contrast (MK-027, MK-028)', () => {
+  it('fills a theme of a plugin with the default theme, and ignores invalid values', () => {
+    registerTheme('dev.example.green', {
+      title: 'Green',
+      radius: 99,
+      font: 'url(evil)',
+      light: { brand: '#1b7a3e', background: 'red' },
+    });
+
+    expect(isThemeName('dev.example.green')).toBe(true);
+    expect(themes().map((theme) => theme.id)).toEqual(['mosaikit', 'pa', 'dev.example.green']);
+    expect(themeTitle('dev.example.green')).toBe('Green');
+    const green = themeTokens('dev.example.green', 'light').mosaikit;
+    const base = themeTokens('mosaikit', 'light').mosaikit;
+    expect(green['--mk-accent']).toBe('#1b7a3e');
+    expect(green['--mk-bg']).toBe(base['--mk-bg']);
+    expect(green['--mk-radius']).toBe(base['--mk-radius']);
+    expect(green['--mk-font']).toBe(base['--mk-font']);
+    expect(themeTokens('dev.example.green', 'dark').mosaikit['--mk-bg']).toBe(
+      themeTokens('mosaikit', 'dark').mosaikit['--mk-bg'],
+    );
+    expect(themeTitle('dev.example.unknown')).toBe('Mosaikit');
+  });
+
+  it.each(['mosaikit', 'pa'])('has a high contrast scheme for %s', (name) => {
+    const tokens = themeTokens(name, 'contrast').mosaikit;
+
+    expect(tokens['--mk-bg']).toBe('#000000');
+    expect(tokens['--mk-fg']).toBe('#ffffff');
+    expect(contrast(tokens['--mk-fg'] ?? '', tokens['--mk-bg'] ?? '')).toBeGreaterThanOrEqual(7);
+    expect(contrast(tokens['--mk-accent'] ?? '', tokens['--mk-bg'] ?? '')).toBeGreaterThanOrEqual(
+      7,
+    );
+    expect(
+      contrast(tokens['--mk-accent-fg'] ?? '', tokens['--mk-accent'] ?? ''),
+    ).toBeGreaterThanOrEqual(7);
   });
 });

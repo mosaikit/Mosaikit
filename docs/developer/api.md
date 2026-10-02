@@ -41,7 +41,8 @@ HTTP Basic or bearer tokens.
 | `POST /api/v1/accounts/registrations` | anyone, when registration is on and the organization allows it | self-registration: 201 with the account, or 202 when a link was sent to confirm the address first |
 | `POST /api/v1/accounts/confirmations` | anyone | confirm an address with the token of the link (`{"token": "…"}`); 404 when the link was used or expired |
 | `POST /api/v1/accounts/confirmations/requests` | anyone | send the link again (`{"email": "…"}`); always 202 |
-| `GET /api/v1/accounts/me` | signed in | the current account |
+| `GET /api/v1/accounts/me` | signed in | the current account, with its personal settings |
+| `GET, PUT /api/v1/accounts/me/preferences` | signed in | the personal settings (MK-027): `theme`, `appearance` (`system`, `light`, `dark`, `contrast`), `language` (`en`, `it`), `hiddenApps` (`<plugin id>/<app id>`) |
 | `GET /api/v1/accounts/session` | anyone | the account of the session of the shell, or 204 without one |
 | `DELETE /api/v1/accounts/session` | anyone | end the session of the shell, and forget the browser if it was remembered |
 | `POST /api/v1/accounts/session/remembrance` | signed in, with a password | remember this browser: an HttpOnly cookie signs the person in again for `mosaikit.accounts.remember-for` |

@@ -113,7 +113,7 @@ test.describe('MK-025 Shell with app bar, top bar and work area', () => {
     const bar = apps(page);
     const box = await bar.boundingBox();
     expect(box?.y ?? 0).toBeGreaterThan(600);
-    for (const name of ['Home', 'Plugins', 'Settings']) {
+    for (const name of ['Home', 'Plugins', 'Platform']) {
       await bar.getByRole('link', { name, exact: true }).click();
       const width = await page.evaluate(() => document.documentElement.scrollWidth);
       expect(width).toBeLessThanOrEqual(360);
