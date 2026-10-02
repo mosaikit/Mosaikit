@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
 import { join } from 'node:path';
 
@@ -12,6 +12,9 @@ export interface Mail {
   /** The raw message, headers and body. */
   readonly raw: string;
 }
+
+/** The first line of a stored mail: its recipients, as the client gave them (RCPT TO). */
+const ENVELOPE = 'X-Envelope-To: ';
 
 export interface FakeSmtp {
   readonly port: number;
@@ -35,6 +38,10 @@ export async function startFakeSmtp(
   const server: Server = createServer((socket) => {
     sockets.add(socket);
     socket.on('close', () => sockets.delete(socket));
+    // A client that drops the connection (ECONNRESET) must not stop the server.
+    socket.on('error', () => {
+      socket.destroy();
+    });
     socket.setEncoding('utf8');
     let buffer = '';
     let data: string[] | undefined;
@@ -56,7 +63,11 @@ export async function startFakeSmtp(
             const subject = /^Subject: (.*)$/im.exec(raw)?.[1]?.trim() ?? '';
             const mail = { from, to, subject, raw: unfold(raw) };
             count += 1;
-            writeFileSync(join(directory, `${String(count).padStart(5, '0')}.eml`), raw);
+            // The recipients of the envelope go first: the To header may be written in many ways.
+            // The file is renamed when complete, so that a reader never sees half of it.
+            const file = join(directory, `${String(count).padStart(5, '0')}.eml`);
+            writeFileSync(`${file}.part`, `${ENVELOPE}${to.join(',')}\r\n${raw}`);
+            renameSync(`${file}.part`, file);
             onMail(mail);
             data = undefined;
             reply('250 OK: queued');
@@ -119,11 +130,14 @@ export function mails(directory: string): Mail[] {
     const raw = readFileSync(join(directory, name), 'utf8');
     const header = (field: string): string =>
       new RegExp(`^${field}: (.*)$`, 'im').exec(raw)?.[1]?.trim() ?? '';
+    const envelope = raw.startsWith(ENVELOPE)
+      ? raw.slice(ENVELOPE.length, raw.indexOf('\r\n'))
+      : '';
     return {
       from: header('From'),
-      to: header('To')
+      to: (envelope || header('To'))
         .split(',')
-        .map((address) => address.trim()),
+        .map((address) => address.replace(/.*</, '').replace(/>.*/, '').trim()),
       subject: header('Subject'),
       raw: unfold(raw),
     };
