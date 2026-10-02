@@ -120,6 +120,23 @@ test.describe('MK-025 Shell with app bar, top bar and work area', () => {
     }
   });
 
+  test('25.6 when the apps cannot be loaded the person still enters, and is told why', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/shell/plugins', (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ title: 'Internal Server Error', status: 500, detail: 'Broken.' }),
+      }),
+    );
+    await signIn(page, MARIO);
+    await expect(page.getByRole('alert')).toContainText(
+      'You are signed in, but the apps could not be loaded',
+    );
+    await expect(page.getByRole('button', { name: 'Account: Mario Rossi' })).toBeVisible();
+  });
+
   test('25.5 no name or logo of another product is in the shell', async ({ page }) => {
     await signIn(page, MARIO);
     const text = await page.locator('body').evaluate((body) => {

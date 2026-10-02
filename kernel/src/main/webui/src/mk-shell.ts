@@ -444,6 +444,8 @@ export class MkShell extends LitElement {
   @state() private searchText = '';
   @state() private searchIndex = 0;
   @state() private menuOpen = false;
+  /** Why the apps could not be loaded after signing in. */
+  @state() private appsError: string | undefined;
   /** The page of the sign-in: signing in, creating an account, or waiting for the confirmation. */
   @state() private signInMode: 'sign-in' | 'register' | 'sent' = 'sign-in';
   @state() private registration: RegistrationOptions | undefined;
@@ -861,6 +863,7 @@ export class MkShell extends LitElement {
         ${this.renderAdminLink()}
       </nav>
       <main id="app-area">
+        ${this.appsError ? html`<p class="error" role="alert">${this.appsError}</p>` : nothing}
         ${this.renderOrganizationNotice()}
         ${
           entryForPath(this.entries, this.path) || this.showsAdmin()
@@ -1031,8 +1034,20 @@ export class MkShell extends LitElement {
     );
   }
 
+  /**
+   * Opens the workspace of a signed-in person. When the apps cannot be loaded the person still
+   * enters, and the workspace says so: it is not a failed sign-in.
+   */
   private async enter(account: Account): Promise<void> {
-    const plugins = await this.client.shellPlugins();
+    let plugins: FrontendPlugin[] = [];
+    this.appsError = undefined;
+    try {
+      plugins = await this.client.shellPlugins();
+    } catch (error) {
+      this.appsError = `You are signed in, but the apps could not be loaded: ${
+        error instanceof Error ? error.message : String(error)
+      } Reload the page; if it happens again, tell your administrator.`;
+    }
     const loader = new PluginLoader((path, init) => this.client.request(path, init));
     this.loadResults = await loader.loadAll(plugins, account);
     this.plugins = plugins;
