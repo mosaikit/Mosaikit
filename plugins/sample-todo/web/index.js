@@ -55,6 +55,12 @@ const plugin = {
           }
         });
         void this.refresh();
+        // The items that colleagues add, tick or remove show at once (MK-031).
+        this.stop = items.onChange(() => void this.refresh());
+      }
+
+      disconnectedCallback() {
+        this.stop?.();
       }
 
       async run(change) {

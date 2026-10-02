@@ -40,7 +40,7 @@ public final class PluginManifests {
     private static final String ACTIONS = "actions";
 
     /** Prefixes of the extension points of the kernel, which plugins may not declare. */
-    private static final List<String> KERNEL_POINTS = List.of("launcher.", "rail.", "shell.", "kernel.");
+    private static final List<String> KERNEL_POINTS = List.of("launcher.", "rail.", "settings.", "shell.", "kernel.");
 
     private static final String MUST_BE_OBJECT = "must be an object";
 

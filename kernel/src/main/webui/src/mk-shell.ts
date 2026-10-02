@@ -33,6 +33,7 @@ import type { SettingsSection } from './mk-settings.js';
 import './mk-sign-in.js';
 import { browserLanguage, isLanguage, language, setLanguage, t } from './i18n.js';
 import type { PasswordSignIn } from './mk-sign-in.js';
+import { LiveClient } from './live.js';
 import { PluginLoader, type LoadResult } from './plugin-loader.js';
 
 /** How often the shell looks for actions proposed by assistants. */
@@ -486,6 +487,8 @@ export class MkShell extends LitElement {
   @state() private searchText = '';
   @state() private searchIndex = 0;
   @state() private menuOpen = false;
+  /** The real-time channel of the page (MK-031). */
+  private readonly live = new LiveClient();
   /** Whether the browser has network (MK-029). */
   @state() private online = typeof navigator === 'undefined' ? true : navigator.onLine;
   private readonly onNetwork = (): void => {
@@ -1303,7 +1306,14 @@ export class MkShell extends LitElement {
         { reason: error instanceof Error ? error.message : String(error) },
       );
     }
-    const loader = new PluginLoader((path, init) => this.client.request(path, init));
+    const loader = new PluginLoader(
+      (path, init) => this.client.request(path, init),
+      undefined,
+      undefined,
+      this.live,
+    );
+    // One real-time channel for the page, in the organization of the person (MK-031).
+    this.live.connect(account.organization ?? undefined);
     this.loadResults = await loader.loadAll(plugins, account);
     this.plugins = plugins;
     this.loader = loader;
@@ -1382,6 +1392,7 @@ export class MkShell extends LitElement {
   };
 
   private clearSession(): void {
+    this.live.close();
     this.menuOpen = false;
     clearTimeout(this.refreshTimer);
     clearInterval(this.draftTimer);

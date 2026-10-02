@@ -42,7 +42,7 @@ public class LocalIdentityProvider implements IdentityProvider<UsernamePasswordA
     public Uni<SecurityIdentity> authenticate(
             UsernamePasswordAuthenticationRequest request, AuthenticationRequestContext context) {
         RoutingContext routing = HttpSecurityUtils.getRoutingContextAttribute(request);
-        String requested = routing == null ? null : routing.request().getHeader(OrganizationAccess.HEADER);
+        String requested = OrganizationAccess.requested(routing);
         String host = routing == null || routing.request().authority() == null
                 ? null
                 : routing.request().authority().host();

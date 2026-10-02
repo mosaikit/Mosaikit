@@ -57,6 +57,11 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-health</artifactId>
         </dependency>
+        <!-- The real-time channel of the shell (MK-031) -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-websockets-next</artifactId>
+        </dependency>
         <!-- Mails to people, such as the confirmation of a registration -->
         <dependency>
             <groupId>io.quarkus</groupId>

@@ -7,6 +7,7 @@
  */
 import {
   dataCollections,
+  NO_LIVE,
   EventBus,
   isMosaikitPlugin,
   type EventHandler,
@@ -161,6 +162,8 @@ export async function start(
     fetch,
     // Through the data service of the bridge, which the shell checks (ADR-0031).
     data: dataCollections(fetch, init.plugin.id),
+    // An isolated frame has no real-time channel of its own (MK-031).
+    live: NO_LIVE,
   });
   doc.body.replaceChildren(doc.createElement(init.element));
 }

@@ -33,6 +33,24 @@ public class OrganizationAccess {
     /** Attribute of the security identity: slug of the organization of the request. */
     public static final String SLUG_ATTRIBUTE = "mosaikit.organization.slug";
 
+    /** The path of the WebSocket of the shell, whose browsers cannot send headers (MK-031). */
+    public static final String LIVE_PATH = "/api/v1/live";
+
+    /**
+     * The organization a request asks for: the {@value #HEADER} header, or, for the WebSocket of the
+     * shell, the query parameter {@code organization}.
+     */
+    public static String requested(io.vertx.ext.web.RoutingContext routing) {
+        if (routing == null) {
+            return null;
+        }
+        String header = routing.request().getHeader(HEADER);
+        if (header == null && LIVE_PATH.equals(routing.normalizedPath())) {
+            return routing.request().getParam("organization");
+        }
+        return header;
+    }
+
     /**
      * The organization of a request and the roles of the person in it.
      *

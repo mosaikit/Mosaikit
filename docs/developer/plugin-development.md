@@ -102,6 +102,29 @@ export default definePlugin({
 Any framework that produces custom elements can be used. Use the shell's CSS custom properties
 (`--mk-surface`, `--mk-fg`, `--mk-accent`, …) so that the plugin follows the theme.
 
+### Real time
+
+The shell keeps one WebSocket to the kernel (MK-031). A frontend reacts to the changes of its
+collections, made by anyone of the organization, and to the events of its backend:
+
+```js
+const items = context.data('items');
+const stop = items.onChange(({ id, action }) => refresh()); // created, replaced, deleted
+context.live.subscribe('plugin.dev.example.hello.greeted', (data) => show(data));
+```
+
+A Java backend publishes with `LiveEvents` of `kernel-api`; the event leaves when the transaction
+commits, and reaches the pages subscribed to the topic in the same organization:
+
+```java
+@Inject LiveEvents live;
+live.publish("plugin.dev.example.hello.greeted", Map.of("id", greeting.id()));
+```
+
+Topics are `documents.<plugin id>.<collection>`, `plugin.<plugin id>.<name>` and `notifications`;
+the kernel refuses the others, and those of plugins that the organization turned off. Send what
+changed, not the data: pages read it again with the rights of each person.
+
 ### Settings, language and theme
 
 A plugin adds a section to the personal settings with the point `settings.section`; `roles`, when
