@@ -72,8 +72,16 @@ function manifest(options: PluginOptions): string {
     '  # What the frontend may do when the shell runs it isolated in an iframe.',
     '  bridge:',
     `    publishes: [${names.slug}.*]`,
-    backend ? '    services: [api]' : '    subscribes: []',
+    backend ? '    services: [api]' : '    services: [data]',
   );
+  if (!backend) {
+    lines.push(
+      '# Collections of JSON documents that the kernel keeps for each organization (ADR-0031):',
+      '# nothing to build or migrate, and the plugin is active as soon as it is installed.',
+      'data:',
+      '  collections: [items]',
+    );
+  }
   if (backend) {
     lines.push(
       '# Tools for assistants and MCP clients; write actions wait for the confirmation of the person.',
@@ -144,14 +152,30 @@ function frontend(options: PluginOptions): string {
       }`
     : `
       async refresh() {
-        this.status.textContent = \`Hello \${context.user.displayName}, this is ${names.name}.\`;
+        try {
+          const items = await context.data('items').list();
+          this.list.replaceChildren(
+            ...items.map((item) => {
+              const li = document.createElement('li');
+              li.textContent = item.data.title;
+              return li;
+            }),
+          );
+          this.status.textContent =
+            items.length === 0 ? \`Hello \${context.user.displayName}, no items yet.\` : \`\${items.length} items.\`;
+        } catch (error) {
+          this.status.textContent = \`The items cannot be loaded: \${error.message}\`;
+        }
       }
 
       async add(title) {
-        const li = document.createElement('li');
-        li.textContent = title;
-        this.list.append(li);
-        context.events.publish('${names.slug}.created', { title });
+        try {
+          await context.data('items').create({ title });
+          context.events.publish('${names.slug}.created', { title });
+          await this.refresh();
+        } catch (error) {
+          this.status.textContent = \`The item cannot be saved: \${error.message}\`;
+        }
       }`;
   return `${header(options, '//')}
 /**
@@ -258,7 +282,8 @@ the kernel, with scope \`provided\`: the package contains only your classes. Eve
 `
     : `## Build
 
-Nothing to build: the plugin is a manifest and an ES module. Zip it:
+Nothing to build: the plugin is a manifest and an ES module, and its items are documents that the
+kernel keeps for each organization (\`context.data('items')\`). Zip it:
 
 \`\`\`bash
 zip -r ${names.slug}-0.1.0.zip manifest.yaml web README.md

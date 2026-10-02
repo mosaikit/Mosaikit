@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { Catalog, KernelClient, Offer } from './api.js';
+import type { Catalog, Installation, KernelClient, Offer } from './api.js';
 
 /**
  * The marketplace, for platform administrators (MK-022): the offers of the catalogs, with an
@@ -153,7 +153,7 @@ export class MkAdminPlugins extends LitElement {
     }
     try {
       const installation = await this.client.install(offer);
-      this.done(`${installation.id} ${installation.version}`, installation.problems);
+      this.done(installation);
     } catch (error) {
       this.report(error);
     }
@@ -167,18 +167,26 @@ export class MkAdminPlugins extends LitElement {
     }
     try {
       const installation = await this.client.upload(file);
-      this.done(`${installation.id} ${installation.version}`, installation.problems);
+      this.done(installation);
     } catch (error) {
       this.report(error);
     }
     input.value = '';
   };
 
-  private done(what: string, problems: string[] | undefined): void {
+  private done(installation: Installation): void {
     this.failed = false;
+    const what = `${installation.id} ${installation.version}`;
+    const problems = installation.problems;
     const notes = problems && problems.length > 0 ? ` Note: ${problems.join('; ')}` : '';
-    this.message = `${what} is installed: restart Mosaikit to use it.${notes}`;
-    // The table then shows the package as waiting for the restart, without an Install button.
+    if (installation.restartRequired) {
+      this.message = `${what} is installed: restart Mosaikit to use it.${notes}`;
+    } else {
+      // Only a frontend and collections: active at once (ADR-0031); the shell loads its apps.
+      this.message = `${what} is installed and active.${notes}`;
+      this.dispatchEvent(new CustomEvent('mk-plugins-changed', { bubbles: true, composed: true }));
+    }
+    // The table then shows the package as installed, or waiting for the restart.
     void this.refresh();
   }
 

@@ -44,7 +44,9 @@ frontend:
   bridge:                      # what the frontend may do when it runs isolated
     publishes: [hello.greeted]
     subscribes: [maps.*]
-    services: [api]            # api: its own backend API, with the credentials of the person
+    services: [api]            # api: its own backend API; data: its collections
+data:                          # JSON documents kept by the kernel, without a backend (MK-046)
+  collections: [greetings]     # [a-z][a-z0-9-]*, unique in the plugin
 backend:
   jar: lib/hello.jar           # Java code, loaded by the launcher at the next start
   api: hello                   # REST resources under /api/v1/p/hello/
@@ -112,6 +114,7 @@ modes, as long as it uses only its `context`:
 | `events.publish(topic)` | only topics of `bridge.publishes` reach the shell |
 | `events.on(pattern)` | only patterns covered by `bridge.subscribes` receive events |
 | `fetch(path, init)` | only the backend API of the plugin (`/api/v1/p/<api>/…`, or a path relative to it), text bodies, with `bridge.services: [api]` |
+| `data(collection)` | only the collections of the plugin, with `bridge.services: [data]` |
 | `user`, `plugin`, `contributions`, `locale` | as usual |
 
 In the iframe the plugin has no access to the page of the shell, to its storage or to the
@@ -179,6 +182,29 @@ oras push registry.example.org/plugins/my-plugin:1.0.0 \
   my-plugin-1.0.0.zip:application/vnd.mosaikit.plugin.v1+zip
 oras pull registry.example.org/plugins/my-plugin:1.0.0 -o plugins/
 ```
+
+## Plugins without a backend
+
+Most apps keep simple records of an organization. Such a plugin needs no Java code and no schema
+([ADR-0031](../adr/0031-frontend-plugins-on-the-data-api.md)): it declares collections in
+`data.collections`, and the kernel keeps their JSON documents for each organization, under
+row-level security, at `/api/v1/data/<plugin id>/<collection>`. The frontend uses them through its
+context:
+
+```js
+const items = context.data('items');
+const created = await items.create({ title: 'Paint the fence', done: false });
+await items.update(created.id, { ...created.data, done: true }, created.version); // 409 if changed since
+const all = await items.list({ limit: 50 });                                     // newest first
+await items.remove(created.id);
+```
+
+A document is a JSON object of at most 256 KiB, and a collection holds at most 10,000 of them.
+Errors are `DataError`s with the HTTP status and the detail of the kernel. Such a plugin is active
+as soon as it is installed: the marketplace answers `restartRequired: false` and the shell shows
+the app without a reload. [`sample-todo`](../../plugins/sample-todo) is a complete example, and
+`create-mosaikit-plugin` without `--backend` writes one. When an app needs queries beyond listing
+and paging, give it a backend and a schema.
 
 ## Data of organizations
 

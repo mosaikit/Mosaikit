@@ -193,6 +193,7 @@ export class MkShell extends LitElement {
 
   override connectedCallback(): void {
     super.connectedCallback();
+    this.addEventListener('mk-plugins-changed', () => void this.reloadPlugins());
     window.addEventListener('popstate', this.onPopState);
     this.client.systemInfo().then(
       (info) => {
@@ -568,6 +569,23 @@ export class MkShell extends LitElement {
     await this.loadAssistant();
     clearInterval(this.draftTimer);
     this.draftTimer = setInterval(() => void this.loadDrafts(), DRAFT_REFRESH_MS);
+  }
+
+  /**
+   * Loads the plugins that became active without a restart (ADR-0031), such as one just installed
+   * from the Plugins page; those already loaded stay as they are.
+   */
+  private async reloadPlugins(): Promise<void> {
+    if (!this.account || !this.loader) {
+      return;
+    }
+    const plugins = await this.client.shellPlugins();
+    const known = new Set(this.plugins.map((plugin) => plugin.id));
+    const added = plugins.filter((plugin) => !known.has(plugin.id));
+    const results = await this.loader.loadAll(added, this.account, plugins);
+    this.loadResults = [...this.loadResults, ...results];
+    this.plugins = plugins;
+    this.entries = launcherEntries(plugins);
   }
 
   private readonly signOut = async (): Promise<void> => {

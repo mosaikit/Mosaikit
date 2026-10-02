@@ -47,6 +47,9 @@ public final class PluginManifests {
     public static final List<String> ACTION_METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE");
 
     /** Name of the API of a plugin: one path segment under {@code /api/v1/p/}. */
+    /** Name of a collection of documents of a plugin (ADR-0031). */
+    public static final Pattern COLLECTION_PATTERN = Pattern.compile("^[a-z][a-z0-9-]{0,63}$");
+
     public static final Pattern API_PATTERN = Pattern.compile("^[a-z][a-z0-9-]{1,39}$");
 
     /** Extension point or requirement name, for example {@code launcher.app}. */
@@ -89,6 +92,7 @@ public final class PluginManifests {
             FrontendEntry frontend = readFrontend();
             BackendEntry backend = readBackend();
             DatabaseEntry database = readDatabase();
+            DataEntry data = readData();
             List<Contribution> contributions = readContributions();
             List<ActionEntry> actions = readActions(backend);
 
@@ -106,6 +110,7 @@ public final class PluginManifests {
                     frontend,
                     backend,
                     database,
+                    data,
                     contributions,
                     actions));
         }
@@ -324,6 +329,30 @@ public final class PluginManifests {
                 violation("database.migrations", "must be a relative path inside the plugin, without '..'");
             }
             return schema == null ? null : new DatabaseEntry(schema, migrations);
+        }
+
+        private DataEntry readData() {
+            Map<String, ?> data = optionalMap(tree, "data");
+            if (data.isEmpty()) {
+                return null;
+            }
+            if (!(data.get("collections") instanceof List<?> list) || list.isEmpty()) {
+                violation("data.collections", "must be a list of at least one collection name");
+                return null;
+            }
+            List<String> collections = new ArrayList<>();
+            for (int i = 0; i < list.size(); i++) {
+                String field = "data.collections[" + i + "]";
+                if (!(list.get(i) instanceof String name)
+                        || !COLLECTION_PATTERN.matcher(name).matches()) {
+                    violation(field, "must be lowercase letters, digits and '-', for example items");
+                } else if (collections.contains(name)) {
+                    violation(field, "the collection '" + name + "' is declared twice");
+                } else {
+                    collections.add(name);
+                }
+            }
+            return new DataEntry(collections);
         }
 
         private List<Contribution> readContributions() {

@@ -6,6 +6,15 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Plugins without a backend (MK-046, ADR-0031): a manifest declares `data.collections`, and the
+  kernel keeps their JSON documents for each organization under row-level security at
+  `/api/v1/data/<plugin>/<collection>`; the SDK offers `context.data(collection)` and the bridge
+  the service `data`. Such a plugin is active as soon as it is installed, without a restart, and
+  the shell loads it without a reload. New sample `sample-todo`; `create-mosaikit-plugin` without
+  `--backend` writes one.
+
 ### Changed
 
 - The Maven coordinates are `io.github.mosaikit` (`io.github.mosaikit:mosaikit-kernel-api`) and

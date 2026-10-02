@@ -56,7 +56,11 @@
               "items": { "$ref": "#/$defs/topic" },
               "uniqueItems": true
             },
-            "services": { "type": "array", "items": { "enum": ["api"] }, "uniqueItems": true }
+            "services": {
+              "type": "array",
+              "items": { "enum": ["api", "data"] },
+              "uniqueItems": true
+            }
           },
           "additionalProperties": false
         },
@@ -76,6 +80,20 @@
       "properties": {
         "jar": { "allOf": [{ "$ref": "#/$defs/relativePath" }, { "pattern": "\\.jar$" }] },
         "api": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,39}$" }
+      },
+      "additionalProperties": false
+    },
+    "data": {
+      "description": "Collections of JSON documents that the plugin keeps in the kernel, per organization, without a backend of its own (ADR-0031).",
+      "type": "object",
+      "required": ["collections"],
+      "properties": {
+        "collections": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" }
+        }
       },
       "additionalProperties": false
     },

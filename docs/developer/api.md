@@ -50,8 +50,10 @@ HTTP Basic or bearer tokens.
 | `GET /api/v1/organizations/{slug}/members` | `platform-admin` | the members of an organization |
 | `PUT, DELETE /api/v1/organizations/{slug}/members/{email}` | `platform-admin` | add a person, change their roles, remove them |
 | `GET /api/v1/marketplace` | `platform-admin` | the catalogs and what they offer, compared with what is installed (MK-022) |
-| `POST /api/v1/marketplace/installations` | `platform-admin` | install a package of a catalog (`source`, `id`, `version`); 202, used at the next start |
-| `POST /api/v1/plugins/packages` | `platform-admin` | install an uploaded package (`application/zip`); 202, used at the next start |
+| `POST /api/v1/marketplace/installations` | `platform-admin` | install a package of a catalog (`source`, `id`, `version`); 202, active at once or at the next start (`restartRequired`) |
+| `POST /api/v1/plugins/packages` | `platform-admin` | install an uploaded package (`application/zip`); 202, active at once or at the next start (`restartRequired`) |
+| `GET, POST /api/v1/data/{plugin}/{collection}` | signed in, with an organization | the documents of a collection declared by an active plugin, newest first (`offset`, `limit`); add one (MK-046) |
+| `GET, PUT, DELETE /api/v1/data/{plugin}/{collection}/{id}` | signed in, with an organization | one document; `PUT` with `If-Match: <version>` answers 409 if it changed since |
 | `GET /api/v1/audit-events` | `platform-admin` | the latest audit events (`limit`, `organization`) |
 | `GET /api/v1/ai/tools` | signed in, with an organization | the tools of the active plugins (MK-015) |
 | `POST /api/v1/ai/tools/{tool}/invocations` | signed in, with an organization | invoke a tool: 200 with the result, or 202 with a draft |

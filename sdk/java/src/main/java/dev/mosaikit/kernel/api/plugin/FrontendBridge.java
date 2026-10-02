@@ -20,9 +20,10 @@ public record FrontendBridge(List<String> publishes, List<String> subscribes, Li
 
     /**
      * Services of the shell: {@code api} calls the backend API of the plugin itself ({@code
-     * /api/v1/p/<api>/...}) with the credentials of the signed-in person.
+     * /api/v1/p/<api>/...}), {@code data} its collections of documents ({@code
+     * /api/v1/data/<plugin id>/...}, ADR-0031), with the credentials of the signed-in person.
      */
-    public static final List<String> KNOWN_SERVICES = List.of("api");
+    public static final List<String> KNOWN_SERVICES = List.of("api", "data");
 
     private static final Pattern SEGMENT = Pattern.compile("[a-z][a-zA-Z0-9-]*");
 
