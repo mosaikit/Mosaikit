@@ -5,6 +5,8 @@
 - Deciders: Massimo Antonini
 - Refines [ADR-0006](0006-frontend-web-components.md) (shell) and
   [ADR-0020](0020-frontends-in-any-framework.md) (UI kit)
+- Refined by [ADR-0032](0032-fluent-ui-and-themes.md): the theme of public administrations is
+  built in, and Fluent UI is used for the whole interface
 
 ## Context and problem statement
 

@@ -16,7 +16,7 @@ function contrast(a: string, b: string): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
-describe('themes', () => {
+describe('themes (MK-026)', () => {
   it('derives the 16 shades of Fluent UI from the brand color', () => {
     const shades = brandVariants('#0066cc') as unknown as Record<number, string>;
 
