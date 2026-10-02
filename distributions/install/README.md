@@ -34,4 +34,5 @@ previous plugins.
 | `mosaikit`, `mosaikit.cmd` | the launcher |
 | `config/` | settings; every setting can also be an environment variable (`QUARKUS_*`, `MOSAIKIT_*`) |
 | `plugins/` | installed plugins |
+| `catalog/` | signed catalog of the sample plugins, offered on the Plugins page (`mosaikit.marketplace.sources`) |
 | `bin/kernel/` | the kernel, with the web interface |

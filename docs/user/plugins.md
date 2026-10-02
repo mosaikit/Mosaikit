@@ -31,15 +31,19 @@ a package file for installations without network. Every package must be signed b
 publisher and, from a catalog, match its signed index. The package goes into `plugins/` (the one it
 replaces into `plugins/.previous/`) and takes effect at the next restart.
 
-Catalogs are directories with a signed `index.json`, listed in `mosaikit.marketplace.sources`:
+Catalogs are directories with a signed `index.json`, listed in `mosaikit.marketplace.sources`. A
+path without scheme is a directory of the installation:
 
 ```properties
-# a published catalog, and a USB stick for an offline transfer
-mosaikit.marketplace.sources=https://plugins.example.org/stable/,file:/media/usb/mosaikit-plugins/
+# the catalog of the installation, the one of the project, and a USB stick for an offline transfer
+mosaikit.marketplace.sources=catalog/,https://mosaikit.github.io/catalog/,file:/media/usb/mosaikit-plugins/
 ```
 
-Each distribution brings its plugins as a catalog in `target/dist/plugins`, signed with the key it
-already trusts. To publish your own catalog, sign its index with your key:
+Each installation brings the sample plugins as a catalog in `catalog/`, its default source, signed
+with a key it already trusts; the build also leaves the packages in `target/dist/plugins`. Remove
+`catalog/` from the sources, or the directory, to offer none of them.
+
+To publish your own catalog, sign its index with your key:
 
 ```bash
 java -cp bin/kernel/lib/main/dev.mosaikit.mosaikit-kernel-api-*.jar \

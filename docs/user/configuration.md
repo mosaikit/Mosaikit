@@ -77,7 +77,7 @@ Terminate TLS at a reverse proxy or an ingress; in production the kernel sends
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `mosaikit.marketplace.sources` | | comma-separated catalog directories (`https:` or `file:`), each with a signed `index.json` (MK-022) |
+| `mosaikit.marketplace.sources` | `catalog/` in the configuration of an installation | comma-separated catalog directories (`https:`, `file:`, or a path relative to the installation), each with a signed `index.json` (MK-022) |
 | `mosaikit.marketplace.max-package-bytes` | `268435456` | largest package downloaded or accepted |
 
 ## Portable distribution

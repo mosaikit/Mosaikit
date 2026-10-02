@@ -8,7 +8,8 @@ export const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 export const DIST = join(ROOT, 'target', 'dist');
 export const WORK = join(ROOT, 'e2e', '.work');
 export const INSTALLATION = join(WORK, 'mosaikit');
-export const CATALOG = join(WORK, 'catalog');
+/** The catalog that comes with the installation, its default marketplace source. */
+export const CATALOG = join(INSTALLATION, 'catalog');
 export const KEYS = join(WORK, 'keys');
 
 const env = (name: string, fallback: string): string => process.env[name] ?? fallback;

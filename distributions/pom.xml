@@ -176,6 +176,11 @@
                                         <include name="*/target/*.zip"/>
                                     </fileset>
                                 </copy>
+                                <!-- mosaikit/catalog: the same packages as the catalog of the installation, the
+                                     default marketplace source (MK-022), signed and indexed below. -->
+                                <copy todir="${dist.directory}/mosaikit/catalog">
+                                    <fileset dir="${dist.directory}/plugins"/>
+                                </copy>
 
                                 <!-- target/dist/mosaikit-docker: Docker Compose with PostgreSQL and Keycloak.
                                      Not deleted first: a running compose keeps it open, and the user's .env and
@@ -248,6 +253,42 @@
                                 <argument>index</argument>
                                 <argument>${signing.key}</argument>
                                 <argument>${dist.directory}/plugins</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>sign-installation-catalog</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${java.executable}</executable>
+                            <arguments>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>dev.mosaikit.kernel.api.signature.PackageSigningTool</argument>
+                                <argument>sign</argument>
+                                <argument>${signing.key}</argument>
+                                <argument>${dist.directory}/mosaikit/catalog</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>index-installation-catalog</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${java.executable}</executable>
+                            <arguments>
+                                <argument>-classpath</argument>
+                                <classpath/>
+                                <argument>dev.mosaikit.kernel.api.signature.PackageSigningTool</argument>
+                                <argument>index</argument>
+                                <argument>${signing.key}</argument>
+                                <argument>${dist.directory}/mosaikit/catalog</argument>
                             </arguments>
                         </configuration>
                     </execution>
