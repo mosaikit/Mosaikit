@@ -30,7 +30,7 @@ test.describe('MK-008 Shell with sign-in, launcher and plugin apps', () => {
     await page.reload();
     await expect(page.getByRole('button', { name: 'Sign in with a password' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Activities' })).toBeVisible();
-    await expect(page.getByText('Mario Rossi')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Account: Mario Rossi' })).toBeVisible();
   });
 
   test('the password is never kept by the page, and sign-out ends the session', async ({
