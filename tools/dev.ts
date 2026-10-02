@@ -129,7 +129,12 @@ async function main(): Promise<void> {
       return;
     }
     stopping = true;
-    kernel.kill();
+    // On Windows the kernel runs under cmd: stop the whole tree, or its java would stay.
+    if (WINDOWS && kernel.pid !== undefined && kernel.exitCode === null) {
+      spawnSync('taskkill', ['/pid', String(kernel.pid), '/t', '/f'], { stdio: 'ignore' });
+    } else {
+      kernel.kill();
+    }
     model.close();
     await database.stop();
     process.exit(0);
