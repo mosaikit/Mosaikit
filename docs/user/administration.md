@@ -115,6 +115,22 @@ with a link: until they open it the account does not sign in. The link works onc
   links point to the address people use. Without a mail server, registrations fail with a
   message and nothing is created.
 
+## Apps of an organization
+
+The administrators of an organization (role `organization-admin`) open **Organization apps** at
+the bottom of the app bar, and for each app of the active plugins choose:
+
+- **Shown**: an app that is off leaves the app bar of the organization; when all the apps of a
+  plugin are off, its API and its documents answer 403 to the people of the organization;
+- **Pinned**: people cannot hide it in their settings;
+- **For**: everyone, or the administrators only;
+- the **order** of the app bar, with the arrows.
+
+**Save** applies the settings to everyone in the organization at their next page, and records the
+change in the audit log. Apps of plugins installed later are shown, after the others, until the
+administrators decide. Platform administrators can do the same through
+`PUT /api/v1/organizations/{slug}/apps`.
+
 ## Audit log
 
 The kernel records who proposed, confirmed, rejected or ran an action of an assistant, and who

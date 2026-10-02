@@ -10,6 +10,7 @@ import {
   type Account,
   type ActionDraft,
   type Preferences,
+  type ShellApp,
   type Registration,
   type RegistrationOptions,
   type SystemInfo,
@@ -22,6 +23,7 @@ import {
   matching,
   type LauncherEntry,
 } from './navigation.js';
+import { MkAdminApps } from './mk-admin-apps.js';
 import './mk-admin-plugins.js';
 import './mk-admin-settings.js';
 import './mk-assistant.js';
@@ -38,10 +40,24 @@ const DRAFT_REFRESH_MS = 20_000;
 /** How often the shell asks whether the watched plugins changed (development mode). */
 const PLUGIN_WATCH_MS = 1_000;
 
-/** The pages of platform administrators: plugins (MK-022) and settings (MK-048). */
+/**
+ * The pages of administrators: the apps of the organization for its administrators (MK-030), the
+ * plugins (MK-022) and the platform (MK-048) for platform administrators.
+ */
 const ADMIN_PAGES = [
-  { path: '/admin/plugins', title: 'Plugins', element: 'mk-admin-plugins' },
-  { path: '/admin/settings', title: 'Platform', element: 'mk-admin-settings' },
+  {
+    path: '/admin/apps',
+    title: 'Organization apps',
+    element: 'mk-admin-apps',
+    role: 'organization-admin',
+  },
+  { path: '/admin/plugins', title: 'Plugins', element: 'mk-admin-plugins', role: 'platform-admin' },
+  {
+    path: '/admin/settings',
+    title: 'Platform',
+    element: 'mk-admin-settings',
+    role: 'platform-admin',
+  },
 ] as const;
 
 /**
@@ -461,6 +477,8 @@ export class MkShell extends LitElement {
   /** The personal settings of the signed-in person (MK-027). */
   @state() private preferences: Preferences | undefined;
   @state() private settingsStatus = '';
+  /** The apps that the organization shows to the person, in order (MK-030). */
+  @state() private barApps: ShellApp[] | undefined;
   private saves = 0;
   private saving: Promise<void> = Promise.resolve();
   @state() private shellLanguage = browserLanguage();
@@ -479,8 +497,12 @@ export class MkShell extends LitElement {
     setLanguage(this.shellLanguage);
     // A theme plugin installed from the Plugins page is active at once (MK-028).
     this.addEventListener('mk-plugins-changed', () => {
-      void this.reloadPlugins().then(() => this.loadThemes());
+      void this.reloadPlugins()
+        .then(() => this.loadBarApps())
+        .then(() => this.loadThemes());
     });
+    // The administrators of the organization changed its apps (MK-030).
+    this.addEventListener('mk-apps-changed', () => void this.loadBarApps());
     window.addEventListener('popstate', this.onPopState);
     this.client.systemInfo().then(
       (info) => {
@@ -646,9 +668,7 @@ export class MkShell extends LitElement {
       { title: t('Home'), route: '/' },
       { title: t('Settings'), route: '/settings' },
       ...this.entries.map((entry) => ({ title: entry.title, route: entry.route })),
-      ...(this.isPlatformAdmin()
-        ? ADMIN_PAGES.map((page) => ({ title: page.title, route: page.path }))
-        : []),
+      ...this.adminPages().map((page) => ({ title: t(page.title), route: page.path })),
     ];
   }
 
@@ -729,13 +749,27 @@ export class MkShell extends LitElement {
     }
   }
 
+  /** The apps the person may show or hide, in the order of the organization, with the pinned ones. */
+  private barEntries(all: LauncherEntry[]): { entry: LauncherEntry; pinned: boolean }[] {
+    const bar = this.barApps;
+    if (!bar) {
+      return all.map((entry) => ({ entry, pinned: false }));
+    }
+    return bar.flatMap((app) => {
+      const entry = all.find(
+        (candidate) => candidate.pluginId === app.pluginId && candidate.id === app.appId,
+      );
+      return entry ? [{ entry, pinned: app.pinned }] : [];
+    });
+  }
+
   /** The personal settings page (MK-027). */
   private renderSettings(): unknown {
     const all = launcherEntries(this.plugins);
     return html`<mk-settings
       .preferences=${this.preferences}
       .themes=${uiThemes()}
-      .apps=${all.map((entry) => ({ entry, pinned: false }))}
+      .apps=${this.barEntries(all)}
       .sections=${this.settingsSections()}
       .organizations=${this.renderOrganizationSelector()}
       .status=${this.settingsStatus}
@@ -774,10 +808,36 @@ export class MkShell extends LitElement {
     });
   }
 
-  /** The apps of the app bar without those the person hid. */
+  /**
+   * The apps of the app bar: those that the organization shows to the person, in its order (MK-030),
+   * without those the person hid, unless the organization pinned them.
+   */
   private visibleEntries(entries: LauncherEntry[]): LauncherEntry[] {
     const hidden = new Set(this.preferences?.hiddenApps ?? []);
-    return entries.filter((entry) => !hidden.has(`${entry.pluginId}/${entry.id}`));
+    const key = (entry: LauncherEntry): string => `${entry.pluginId}/${entry.id}`;
+    const bar = this.barApps;
+    const ordered = bar
+      ? bar.flatMap((app) => {
+          const entry = entries.find(
+            (candidate) => key(candidate) === `${app.pluginId}/${app.appId}`,
+          );
+          return entry ? [entry] : [];
+        })
+      : entries;
+    const pinned = new Set(
+      (bar ?? []).filter((app) => app.pinned).map((app) => `${app.pluginId}/${app.appId}`),
+    );
+    return ordered.filter((entry) => pinned.has(key(entry)) || !hidden.has(key(entry)));
+  }
+
+  /** Reads which apps the organization shows to the person, then lays out the app bar again. */
+  private async loadBarApps(): Promise<void> {
+    try {
+      this.barApps = await this.client.shellApps();
+    } catch {
+      this.barApps = undefined;
+    }
+    this.entries = this.visibleEntries(launcherEntries(this.plugins));
   }
 
   /**
@@ -983,17 +1043,18 @@ export class MkShell extends LitElement {
   };
 
   private renderAdminLink(): unknown {
-    if (!this.isPlatformAdmin()) {
+    const pages = this.adminPages();
+    if (pages.length === 0) {
       return nothing;
     }
-    return html`<span class="separator"></span>${ADMIN_PAGES.map(
+    return html`<span class="separator"></span>${pages.map(
         (page) =>
           html`<a
             href=${page.path}
             aria-current=${this.path === page.path ? 'page' : 'false'}
             @click=${this.navigate}
-            >${page.path === '/admin/plugins' ? pluginsIcon : settingsIcon}<span
-              >${page.title}</span
+            >${page.path === '/admin/settings' ? settingsIcon : pluginsIcon}<span
+              >${t(page.title)}</span
             ></a
           >`,
       )}`;
@@ -1219,7 +1280,8 @@ export class MkShell extends LitElement {
     this.entries = this.visibleEntries(launcherEntries(plugins));
     this.account = account;
     this.preferences = account.preferences ?? NO_PREFERENCES;
-    this.entries = this.visibleEntries(launcherEntries(plugins));
+    this.plugins = plugins;
+    await this.loadBarApps();
     this.applyAppearance();
     this.email = undefined;
     this.notice = undefined;
@@ -1299,6 +1361,7 @@ export class MkShell extends LitElement {
     void this.client.signOut();
     this.account = undefined;
     this.preferences = undefined;
+    this.barApps = undefined;
     this.applyAppearance();
     this.entries = [];
     this.loadResults = [];
@@ -1345,8 +1408,19 @@ export class MkShell extends LitElement {
     return this.adminPage() !== undefined;
   }
 
+  /** The pages of administrators that the person may open. */
+  private adminPages(): (typeof ADMIN_PAGES)[number][] {
+    const roles = this.account?.roles ?? [];
+    return ADMIN_PAGES.filter(
+      (page) =>
+        roles.includes(page.role) &&
+        // The apps of an organization need the organization of the request.
+        (page.role !== 'organization-admin' || Boolean(this.account?.organization)),
+    );
+  }
+
   private adminPage(): (typeof ADMIN_PAGES)[number] | undefined {
-    return this.isPlatformAdmin() ? ADMIN_PAGES.find((page) => page.path === this.path) : undefined;
+    return this.adminPages().find((page) => page.path === this.path);
   }
 
   /**
@@ -1364,6 +1438,9 @@ export class MkShell extends LitElement {
       if (area.firstElementChild?.localName !== page.element) {
         const admin = document.createElement(page.element);
         admin.client = this.client;
+        if (admin instanceof MkAdminApps) {
+          admin.organization = this.account?.organization ?? undefined;
+        }
         area.replaceChildren(admin);
       }
       return;

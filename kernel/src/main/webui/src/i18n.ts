@@ -84,6 +84,23 @@ const ITALIAN: Record<string, string> = {
   'Pinned by your organization': 'Fissata dalla tua organizzazione',
   'Saved.': 'Salvato.',
   'Not saved: {reason}': 'Non salvato: {reason}',
+  // Apps of the organization
+  'Organization apps': "App dell'organizzazione",
+  'The apps of the app bar of your organization, in their order.':
+    'Le app della barra della tua organizzazione, nel loro ordine.',
+  App: 'App',
+  Shown: 'Visibile',
+  Pinned: 'Fissata',
+  For: 'Per',
+  Order: 'Ordine',
+  'Show {app}': 'Mostra {app}',
+  'Pin {app}': 'Fissa {app}',
+  'Who sees {app}': 'Chi vede {app}',
+  Everyone: 'Tutti',
+  Administrators: 'Amministratori',
+  'Move {app} up': 'Sposta {app} in alto',
+  'Move {app} down': 'Sposta {app} in basso',
+  Save: 'Salva',
   // Platform settings
   'Platform settings': 'Impostazioni della piattaforma',
   'People can create their own account': 'Le persone possono creare il proprio account',

@@ -8,6 +8,12 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Apps per organization (MK-030): the administrators of an organization choose in **Organization
+  apps** which apps its app bar shows, in which order, which are pinned and which only
+  administrators see (`/api/v1/organizations/{slug}/apps`, audited); a plugin whose apps are all
+  off refuses its API and its documents to the organization; pinned apps cannot be hidden in the
+  personal settings.
+
 - Theme plugins (MK-028): a plugin of kind `theme` declares `theme` (title, font, radius, light and
   dark colors); it is active at once, offered in the personal settings and usable as the theme of
   the installation (`mosaikit.ui.theme=<plugin id>`); what it leaves out comes from the default

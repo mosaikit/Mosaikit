@@ -75,6 +75,11 @@ contributes:
       order: 50                # position in the app bar, smaller first; 100 by default
 ```
 
+The administrators of each organization decide which apps appear, in which order and for whom
+(MK-030); when they turn off all the apps of a plugin, the kernel refuses its API
+(`/api/v1/p/<api>/…`) and its documents (`/api/v1/data/<plugin id>/…`) to that organization with
+403, so the plugin needs no check of its own.
+
 `launcher.app`, the point of the first versions, is still shown in the app bar during the 0.x
 versions, with a warning in the status of the plugin (`warnings` in `GET /api/v1/plugins`): rename
 it to `rail.app`.
