@@ -9,7 +9,7 @@ export async function signIn(page: Page, person: Person = ADMIN): Promise<void> 
   await page.goto('/');
   await page.getByRole('button', { name: 'Sign in with a password' }).click();
   await page.getByLabel('Email or username').fill(person.user);
-  await page.getByLabel('Password').fill(person.password);
+  await page.getByLabel('Password', { exact: true }).fill(person.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible();
 }

@@ -8,6 +8,13 @@ project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A new sign-in page with "remember me" (MK-047): a remembered person stays signed in on the
+  browser for `mosaikit.accounts.remember-for` (30 days), with an HttpOnly cookie kept in the
+  database as a digest, until they sign out.
+- `@mosaikit/ui` (ADR-0032): the Fluent UI web components and the themes of the shell, selected
+  with `mosaikit.ui.theme`: `mosaikit` (default) or `pa`, for public administrations, in the style
+  of Bootstrap Italia. The fonts are served by the kernel.
+
 - Plugins without a backend (MK-046, ADR-0031): a manifest declares `data.collections`, and the
   kernel keeps their JSON documents for each organization under row-level security at
   `/api/v1/data/<plugin>/<collection>`; the SDK offers `context.data(collection)` and the bridge

@@ -29,6 +29,42 @@ public interface KernelConfig {
     /** The assistant that uses the tools of the plugins (MK-024). */
     Assistant assistant();
 
+    /** The look of the user interface. */
+    Ui ui();
+
+    /** Local accounts. */
+    Accounts accounts();
+
+    /** Settings of local accounts. */
+    interface Accounts {
+
+        /** How long "remember me" keeps a person signed in on a browser, unless they sign out. */
+        @WithDefault("30d")
+        Duration rememberFor();
+    }
+
+    /** Settings of the user interface. */
+    interface Ui {
+
+        /**
+         * The theme of the shell: {@code mosaikit}, or {@code pa} for public administrations, in the
+         * style of Bootstrap Italia (AgID design guidelines).
+         */
+        @WithDefault("mosaikit")
+        Theme theme();
+
+        /** The themes of the user interface, with the names of {@code @mosaikit/ui}. */
+        enum Theme {
+            MOSAIKIT,
+            PA;
+
+            /** The name of the theme in {@code @mosaikit/ui}. */
+            public String id() {
+                return name().toLowerCase(java.util.Locale.ROOT);
+            }
+        }
+    }
+
     /**
      * A language model behind an OpenAI-compatible chat completions API, such as a local Ollama
      * ({@code http://localhost:11434/v1}), vLLM or a hosted service. Without a URL there is no

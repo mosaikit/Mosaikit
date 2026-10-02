@@ -8,5 +8,7 @@ package dev.mosaikit.kernel.core.system;
  * @param name product name
  * @param version kernel version
  * @param activePlugins number of active plugins
+ * @param theme the theme of the user interface ({@code mosaikit}, {@code pa})
+ * @param rememberDays how many days "remember me" keeps a person signed in
  */
-public record SystemInfo(String name, String version, int activePlugins) {}
+public record SystemInfo(String name, String version, int activePlugins, String theme, long rememberDays) {}

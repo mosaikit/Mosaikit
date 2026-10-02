@@ -7,11 +7,17 @@ export default defineConfig({
   resolve: {
     alias: {
       '@mosaikit/sdk': fileURLToPath(new URL('./sdk/js/src/index.ts', import.meta.url)),
+      '@mosaikit/ui/components': fileURLToPath(
+        new URL('./sdk/ui/src/components.ts', import.meta.url),
+      ),
+      '@mosaikit/ui/fonts.css': fileURLToPath(new URL('./sdk/ui/src/fonts.css', import.meta.url)),
+      '@mosaikit/ui': fileURLToPath(new URL('./sdk/ui/src/index.ts', import.meta.url)),
     },
   },
   test: {
     include: [
       'sdk/js/test/**/*.test.ts',
+      'sdk/ui/test/**/*.test.ts',
       'sdk/create-plugin/test/**/*.test.ts',
       'sdk/java/src/test/ts/**/*.test.ts',
       'kernel/src/main/webui/test/**/*.test.ts',
@@ -22,11 +28,19 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      include: ['sdk/js/src/**', 'sdk/create-plugin/src/**', 'kernel/src/main/webui/src/**'],
+      include: [
+        'sdk/js/src/**',
+        'sdk/ui/src/themes.ts',
+        'sdk/create-plugin/src/**',
+        'kernel/src/main/webui/src/**',
+      ],
       exclude: [
         'sdk/create-plugin/src/bin.ts',
         'kernel/src/main/webui/src/main.ts',
         'kernel/src/main/webui/src/mk-shell.ts',
+        'kernel/src/main/webui/src/mk-sign-in.ts',
+        'sdk/ui/src/apply.ts',
+        'sdk/ui/src/components.ts',
         'kernel/src/main/webui/src/mk-admin-plugins.ts',
         'kernel/src/main/webui/src/mk-assistant.ts',
         'kernel/src/main/webui/src/mk-plugin-frame.ts',

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Massimo Antonini
 // SPDX-License-Identifier: MPL-2.0
+import { applyTheme, isThemeName } from '@mosaikit/ui';
 import type { FrontendPlugin } from '@mosaikit/sdk';
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
@@ -15,6 +16,8 @@ import { entryForPath, launcherEntries, type LauncherEntry } from './navigation.
 import './mk-admin-plugins.js';
 import './mk-assistant.js';
 import './mk-plugin-frame.js';
+import './mk-sign-in.js';
+import type { PasswordSignIn } from './mk-sign-in.js';
 import { PluginLoader, type LoadResult } from './plugin-loader.js';
 
 /** How often the shell looks for actions proposed by assistants. */
@@ -201,6 +204,7 @@ export class MkShell extends LitElement {
     this.client.systemInfo().then(
       (info) => {
         this.info = info;
+        applyTheme(isThemeName(info.theme) ? info.theme : 'mosaikit');
       },
       () => {
         this.error = 'The kernel is not reachable.';
@@ -238,66 +242,35 @@ export class MkShell extends LitElement {
   }
 
   override render(): unknown {
+    if (!this.account) {
+      return this.renderSignIn();
+    }
     return html`
       <header>
         <span class="brand">${this.info?.name ?? 'Mosaikit'}</span>
         <span class="muted">${this.info ? `v${this.info.version}` : nothing}</span>
         <span class="spacer"></span>
-        ${
-          this.account
-            ? html`${this.renderOrganizationSelector()}<span>${this.account.displayName}</span>
-                <button class="secondary" @click=${this.signOut}>Sign out</button>`
-            : nothing
-        }
+        ${this.renderOrganizationSelector()}<span>${this.account.displayName}</span>
+        <button class="secondary" @click=${this.signOut}>Sign out</button>
       </header>
-      ${this.account ? this.renderWorkspace() : this.renderSignIn()}
+      ${this.renderWorkspace()}
     `;
   }
 
-  /**
-   * Sign-in in two steps: the email address chooses the organization and its realm (MK-012); a
-   * person without a realm, or who asks for it, then enters a local password.
-   */
+  /** The sign-in page (mk-sign-in), which tells the shell what the person asked for. */
   private renderSignIn(): unknown {
-    const error = this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing;
-    if (this.email === undefined) {
-      return html`
-        <form @submit=${this.continueWithEmail} aria-labelledby="sign-in-title">
-          <h1 id="sign-in-title">Sign in</h1>
-          <label
-            >Email or username
-            <input name="username" inputmode="email" autocomplete="username" required
-          /></label>
-          ${error}
-          <button type="submit" ?disabled=${this.busy}>Continue</button>
-          <button type="button" class="secondary" @click=${this.usePassword}>
-            Sign in with a password
-          </button>
-        </form>
-      `;
-    }
-    return html`
-      <form @submit=${this.signIn} aria-labelledby="sign-in-title">
-        <h1 id="sign-in-title">Sign in</h1>
-        <label>
-          Email or username
-          <input
-            name="username"
-            inputmode="email"
-            autocomplete="username"
-            .value=${this.email}
-            required
-          />
-        </label>
-        <label>
-          Password
-          <input name="password" type="password" autocomplete="current-password" required />
-        </label>
-        ${error}
-        <button type="submit" ?disabled=${this.busy}>Sign in</button>
-        <button type="button" class="secondary" @click=${this.restartSignIn}>Back</button>
-      </form>
-    `;
+    return html`<mk-sign-in
+      .product=${this.info?.name ?? 'Mosaikit'}
+      .version=${this.info?.version}
+      .email=${this.email}
+      .busy=${this.busy}
+      .error=${this.error}
+      .rememberDays=${this.info?.rememberDays ?? 30}
+      @mk-continue=${this.continueWithEmail}
+      @mk-use-password=${this.usePassword}
+      @mk-back=${this.restartSignIn}
+      @mk-sign-in=${this.signIn}
+    ></mk-sign-in>`;
   }
 
   /**
@@ -469,9 +442,10 @@ export class MkShell extends LitElement {
   }
 
   /** First step: sends the person to the realm of the organization, or asks for a password. */
-  private readonly continueWithEmail = async (event: SubmitEvent): Promise<void> => {
-    event.preventDefault();
-    const email = field(new FormData(event.target as HTMLFormElement), 'username');
+  private readonly continueWithEmail = async (
+    event: CustomEvent<{ email: string }>,
+  ): Promise<void> => {
+    const email = event.detail.email;
     this.busy = true;
     this.error = undefined;
     try {
@@ -498,13 +472,17 @@ export class MkShell extends LitElement {
     this.email = undefined;
   };
 
-  private readonly signIn = async (event: SubmitEvent): Promise<void> => {
-    event.preventDefault();
-    const data = new FormData(event.target as HTMLFormElement);
+  private readonly signIn = async (event: CustomEvent<PasswordSignIn>): Promise<void> => {
+    const { username, password, remember } = event.detail;
     this.busy = true;
     this.error = undefined;
     try {
-      await this.enter(await this.client.signIn(field(data, 'username'), field(data, 'password')));
+      const account = await this.client.signIn(username, password);
+      if (remember) {
+        // Not being remembered is no reason to stay out: the session of the browser goes on.
+        await this.client.remember().catch(() => undefined);
+      }
+      await this.enter(account);
     } catch (error) {
       this.error = error instanceof KernelError ? error.message : 'Sign-in failed. Try again.';
     } finally {
@@ -754,12 +732,6 @@ export function failureOf(
 /** Where the realm sends the person back: the root of the site, registered in its client. */
 function redirectUri(): string {
   return `${location.origin}/`;
-}
-
-/** Reads a text field of a submitted form. */
-function field(data: FormData, name: string): string {
-  const value = data.get(name);
-  return typeof value === 'string' ? value : '';
 }
 
 declare global {
