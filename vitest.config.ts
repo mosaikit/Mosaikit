@@ -41,6 +41,7 @@ export default defineConfig({
         'kernel/src/main/webui/src/mk-shell.ts',
         'kernel/src/main/webui/src/mk-sign-in.ts',
         'kernel/src/main/webui/src/mk-settings.ts',
+        'kernel/src/main/webui/src/mk-admin-apps.ts',
         'sdk/ui/src/apply.ts',
         'sdk/ui/src/components.ts',
         'kernel/src/main/webui/src/mk-admin-plugins.ts',

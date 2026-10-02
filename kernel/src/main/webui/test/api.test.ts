@@ -243,3 +243,38 @@ describe('KernelClient (MK-008)', () => {
     expect(await unwatched.pluginRevision()).toBeUndefined();
   });
 });
+
+describe('KernelClient settings, themes and apps (MK-027, MK-028, MK-030)', () => {
+  it('calls the endpoints with the method and the body expected', async () => {
+    const fetchMock = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(() =>
+      Promise.resolve(json(200, [])),
+    );
+    const client = new KernelClient(fetchMock, memory());
+    const preferences = {
+      theme: 'pa',
+      appearance: 'dark',
+      language: 'it',
+      hiddenApps: [],
+    } as const;
+    const apps = [
+      { pluginId: 'p', appId: 'a', title: 'A', enabled: false, pinned: true, roles: [] },
+    ];
+
+    await client.changePreferences(preferences);
+    await client.themes();
+    await client.shellApps();
+    await client.organizationApps('comune di prova');
+    await client.changeOrganizationApps('comune di prova', apps);
+
+    const calls = fetchMock.mock.calls.map(([path, init]) => [path, init?.method ?? 'GET']);
+    expect(calls).toEqual([
+      ['/api/v1/accounts/me/preferences', 'PUT'],
+      ['/api/v1/system/themes', 'GET'],
+      ['/api/v1/shell/apps', 'GET'],
+      ['/api/v1/organizations/comune%20di%20prova/apps', 'GET'],
+      ['/api/v1/organizations/comune%20di%20prova/apps', 'PUT'],
+    ]);
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(preferences));
+    expect(fetchMock.mock.calls[4]?.[1]?.body).toBe(JSON.stringify(apps));
+  });
+});

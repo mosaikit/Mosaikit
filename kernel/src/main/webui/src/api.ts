@@ -58,6 +58,24 @@ export interface Account {
   readonly preferences?: Preferences;
 }
 
+/** An app of the app bar of an organization, with its settings (MK-030). */
+export interface OrganizationApp {
+  readonly pluginId: string;
+  readonly appId: string;
+  readonly title: string;
+  readonly enabled: boolean;
+  readonly pinned: boolean;
+  /** The roles that see it; empty for everyone. */
+  readonly roles: readonly string[];
+}
+
+/** An app that the signed-in person sees, in the order of the app bar (MK-030). */
+export interface ShellApp {
+  readonly pluginId: string;
+  readonly appId: string;
+  readonly pinned: boolean;
+}
+
 /** A theme of a theme plugin (MK-028): only the values it sets. */
 export interface PluginTheme {
   readonly id: string;
@@ -284,6 +302,29 @@ export class KernelClient {
   /** The themes of the active theme plugins (MK-028); anyone can read them, before signing in too. */
   themes(): Promise<PluginTheme[]> {
     return this.getJson<PluginTheme[]>('/api/v1/system/themes');
+  }
+
+  /** The apps that the signed-in person sees, in order (MK-030). */
+  shellApps(): Promise<ShellApp[]> {
+    return this.getJson<ShellApp[]>('/api/v1/shell/apps');
+  }
+
+  /** The apps of an organization with their settings, for its administrators. */
+  organizationApps(slug: string): Promise<OrganizationApp[]> {
+    return this.getJson<OrganizationApp[]>(
+      `/api/v1/organizations/${encodeURIComponent(slug)}/apps`,
+    );
+  }
+
+  changeOrganizationApps(
+    slug: string,
+    apps: readonly OrganizationApp[],
+  ): Promise<OrganizationApp[]> {
+    return this.sendJson<OrganizationApp[]>(
+      `/api/v1/organizations/${encodeURIComponent(slug)}/apps`,
+      'PUT',
+      apps,
+    );
   }
 
   /** The personal settings of the signed-in person (MK-027). */
