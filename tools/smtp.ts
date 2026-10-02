@@ -170,6 +170,10 @@ export function mails(directory: string): Mail[] {
  * link can be found in it.
  */
 function unfold(raw: string): string {
+  // Only quoted-printable bodies: in a 7bit body "=88" is text, such as a part of a token.
+  if (!/^Content-Transfer-Encoding:\s*quoted-printable/im.test(raw)) {
+    return raw;
+  }
   return raw
     .replace(/=\r?\n/g, '')
     .replace(/=([0-9A-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
