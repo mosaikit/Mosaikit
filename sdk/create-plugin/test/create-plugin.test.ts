@@ -62,6 +62,10 @@ describe('create-mosaikit-plugin (MK-023)', () => {
     expect(validate.errors ?? []).toEqual([]);
     expect(valid).toBe(true);
     expect(files.get('web/index.js')).toContain("customElements.define('traffic-lights-app'");
+    expect(manifest).toMatchObject({
+      contributes: { 'rail.app': [{ id: 'traffic-lights', icon: 'web/icon.svg' }] },
+    });
+    expect(files.get('web/icon.svg')).toContain('<svg');
     expect(files.has('pom.xml')).toBe(backend);
     if (backend) {
       expect(manifest).toMatchObject({

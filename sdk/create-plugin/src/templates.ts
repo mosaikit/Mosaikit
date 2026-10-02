@@ -25,6 +25,7 @@ export function pluginFiles(options: PluginOptions): PluginFiles {
   const files = new Map<string, string>();
   files.set('manifest.yaml', manifest(options));
   files.set('web/index.js', frontend(options));
+  files.set('web/icon.svg', icon(options));
   files.set('README.md', readme(options));
   files.set('.gitignore', 'target/\nlib/\ndist/\n');
   files.set('.github/workflows/ci.yml', workflow(options));
@@ -106,13 +107,27 @@ function manifest(options: PluginOptions): string {
   }
   lines.push(
     'contributes:',
-    '  launcher.app:',
+    '  # The app bar of the shell.',
+    '  rail.app:',
     `    - id: ${names.slug}`,
     `      title: ${names.name}`,
     `      route: /app/${names.slug}`,
     `      element: ${names.element}`,
+    '      icon: web/icon.svg',
   );
   return `${lines.join('\n')}\n`;
+}
+
+function icon(options: PluginOptions): string {
+  const letter = options.names.name.slice(0, 1).toUpperCase();
+  const year = String(new Date().getFullYear());
+  return `<!-- SPDX-FileCopyrightText: ${year} ${options.author} -->
+<!-- SPDX-License-Identifier: ${LICENSE} -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <rect width="24" height="24" rx="6" fill="#3654c9"/>
+  <text x="12" y="16.5" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="700" fill="#ffffff">${letter}</text>
+</svg>
+`;
 }
 
 function frontend(options: PluginOptions): string {
@@ -304,7 +319,7 @@ ${build}
 1. Copy the plugin directory (or the zip) into \`plugins/\` of a Mosaikit installation, or of the
    Mosaikit repository to use it in development mode.
 2. Start Mosaikit${backend ? ' with its launcher, which builds your Java code into the kernel' : ''}.
-3. Sign in: **${names.name}** is in the menu of apps.
+3. Sign in: **${names.name}** is in the app bar, with the icon of \`web/icon.svg\`.
 
 ## Release
 

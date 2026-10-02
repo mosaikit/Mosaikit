@@ -15,8 +15,11 @@ frontend:
   bridge:
     publishes: [palette.*]
 contributes:
-  launcher.app:
+  # The app bar of the shell (MK-025).
+  rail.app:
     - id: palette
       title: Palette
       route: /app/palette
       element: mk-sample-palette
+      icon: web/icon.svg
+      order: 80

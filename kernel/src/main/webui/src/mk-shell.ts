@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { applyTheme, isThemeName } from '@mosaikit/ui';
 import type { FrontendPlugin } from '@mosaikit/sdk';
-import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
+import { LitElement, css, html, nothing, svg, type PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import {
   KernelClient,
@@ -14,7 +14,13 @@ import {
   type SystemInfo,
 } from './api.js';
 import { FederatedSignIn, type Federation, type Tokens } from './federation.js';
-import { entryForPath, launcherEntries, type LauncherEntry } from './navigation.js';
+import {
+  entryForPath,
+  initials,
+  launcherEntries,
+  matching,
+  type LauncherEntry,
+} from './navigation.js';
 import './mk-admin-plugins.js';
 import './mk-admin-settings.js';
 import './mk-assistant.js';
@@ -42,50 +48,281 @@ export class MkShell extends LitElement {
   static override readonly styles = css`
     :host {
       display: grid;
-      grid-template-rows: 52px 1fr;
-      min-height: 100vh;
+      grid-template-rows: 48px 1fr;
+      grid-template-columns: 72px minmax(0, 1fr);
+      grid-template-areas: 'top top' 'rail main';
+      height: 100vh;
     }
-    header {
+    /* The top bar: brand, search of apps and pages, the menu of the person. */
+    .top {
+      grid-area: top;
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 0 16px;
-      background: var(--mk-surface);
-      border-bottom: 1px solid var(--mk-line);
+      padding: 0 12px 0 16px;
+      background: var(--mk-brand);
+      color: #ffffff;
     }
     .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-weight: 700;
-      font-size: 17px;
+      font-size: 15px;
+      min-width: 160px;
     }
-    .spacer {
+    .brand .version {
+      font-weight: 400;
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    .search {
+      position: relative;
       flex: 1;
+      max-width: 560px;
+      margin: 0 auto;
     }
-    .body {
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      min-height: 0;
+    .search input {
+      width: 100%;
+      box-sizing: border-box;
+      height: 32px;
+      padding: 0 12px 0 34px;
+      border: 0;
+      border-radius: var(--mk-radius);
+      background: rgb(255 255 255 / 0.92);
+      color: #1a1a1a;
+      font: inherit;
+      font-size: 14px;
     }
-    nav {
+    .search svg {
+      position: absolute;
+      left: 10px;
+      top: 8px;
+      color: #4a4a4a;
+    }
+    .search [role='listbox'] {
+      position: absolute;
+      z-index: 10;
+      top: 38px;
+      left: 0;
+      right: 0;
+      margin: 0;
+      padding: 4px;
+      list-style: none;
       background: var(--mk-surface);
-      border-right: 1px solid var(--mk-line);
-      padding: 12px 8px;
+      color: var(--mk-fg);
+      border: 1px solid var(--mk-line);
+      border-radius: var(--mk-radius);
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+    }
+    .search [role='option'] {
+      padding: 8px 10px;
+      border-radius: var(--mk-radius);
+      cursor: pointer;
+    }
+    .search [role='option'][aria-selected='true'] {
+      background: var(--mk-accent-soft);
+    }
+    .avatar {
+      display: inline-grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgb(255 255 255 / 0.25);
+      color: #ffffff;
+    }
+    .account {
+      padding: 0;
+      border: 2px solid transparent;
+      border-radius: 50%;
+      background: none;
+      cursor: pointer;
+    }
+    .account:focus-visible {
+      outline: 2px solid #ffffff;
+      outline-offset: 1px;
+    }
+    .menu {
+      position: fixed;
+      inset: 52px 12px auto auto;
+      margin: 0;
+      width: 300px;
+      padding: 16px;
+      border: 1px solid var(--mk-line);
+      border-radius: calc(var(--mk-radius) * 2);
+      background: var(--mk-surface);
+      color: var(--mk-fg);
+      box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+      display: grid;
+      gap: 12px;
+    }
+    .menu .who {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .menu .who .avatar {
+      width: 44px;
+      height: 44px;
+      background: var(--mk-accent);
+      color: var(--mk-accent-fg);
+    }
+    .menu .who strong {
+      display: block;
+    }
+    /* The app bar on the left, a bottom bar on phones. */
+    .rail {
+      grid-area: rail;
       display: flex;
       flex-direction: column;
       gap: 2px;
+      padding: 6px 0;
+      background: var(--mk-bg);
+      border-right: 1px solid var(--mk-line);
+      overflow-y: auto;
     }
-    nav a {
-      color: var(--mk-fg);
+    .rail .end {
+      margin-top: auto;
+      display: contents;
+    }
+    .rail .separator {
+      margin-top: auto;
+    }
+    .rail a {
+      position: relative;
+      display: grid;
+      justify-items: center;
+      gap: 2px;
+      padding: 8px 2px;
+      color: var(--mk-muted);
       text-decoration: none;
-      padding: 7px 10px;
-      border-radius: var(--mk-radius);
+      font-size: 11px;
+      line-height: 1.2;
+      text-align: center;
+      overflow-wrap: anywhere;
     }
-    nav a[aria-current='page'] {
-      background: var(--mk-accent-soft);
+    .rail a:hover {
+      color: var(--mk-fg);
+    }
+    .rail a[aria-current='page'] {
+      color: var(--mk-accent);
       font-weight: 600;
     }
+    .rail a[aria-current='page']::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--mk-accent);
+    }
+    .rail a:focus-visible {
+      outline: 2px solid var(--mk-focus);
+      outline-offset: -2px;
+    }
+    .rail img,
+    .rail svg,
+    .rail .tile {
+      width: 24px;
+      height: 24px;
+    }
+    .tile {
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      background: color-mix(in srgb, var(--mk-accent) 16%, var(--mk-surface));
+      color: var(--mk-accent);
+    }
+    /* The apps on the home page. */
+    .apps {
+      list-style: none;
+      padding: 0;
+      margin: 24px 0 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      max-width: 900px;
+    }
+    .apps a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--mk-line);
+      border-radius: calc(var(--mk-radius) * 2);
+      color: var(--mk-fg);
+      text-decoration: none;
+      font-weight: 600;
+      background: var(--mk-surface);
+    }
+    .apps a:hover {
+      border-color: var(--mk-accent);
+    }
+    .apps a:focus-visible {
+      outline: 2px solid var(--mk-focus);
+      outline-offset: 2px;
+    }
+    .apps img,
+    .apps .tile {
+      flex: none;
+      width: 36px;
+      height: 36px;
+      font-size: 13px;
+    }
     main {
-      padding: 20px;
+      grid-area: main;
+      padding: 20px 24px;
       min-width: 0;
+      overflow: auto;
+      background: var(--mk-surface);
+    }
+    @media (max-width: 640px) {
+      :host {
+        grid-template-rows: 48px 1fr 60px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: 'top' 'main' 'rail';
+      }
+      .brand {
+        min-width: 0;
+      }
+      .brand .name,
+      .brand .version {
+        display: none;
+      }
+      .rail {
+        flex-direction: row;
+        padding: 0 4px;
+        border-right: 0;
+        border-top: 1px solid var(--mk-line);
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+      .rail .separator {
+        margin: 0;
+      }
+      .rail a {
+        min-width: 64px;
+        padding: 8px 2px 6px;
+      }
+      .rail a[aria-current='page']::before {
+        left: 12px;
+        right: 12px;
+        top: 0;
+        bottom: auto;
+        width: auto;
+        height: 3px;
+        border-radius: 0 0 3px 3px;
+      }
+      main {
+        padding: 16px;
+      }
     }
     form {
       display: grid;
@@ -198,6 +435,9 @@ export class MkShell extends LitElement {
   @state() private busy = false;
   /** Email entered at the first step; the password step follows when there is no realm. */
   @state() private email: string | undefined;
+  @state() private searchText = '';
+  @state() private searchIndex = 0;
+  @state() private menuOpen = false;
   /** The page of the sign-in: signing in, creating an account, or waiting for the confirmation. */
   @state() private signInMode: 'sign-in' | 'register' | 'sent' = 'sign-in';
   @state() private registration: RegistrationOptions | undefined;
@@ -284,15 +524,150 @@ export class MkShell extends LitElement {
       return this.renderSignIn();
     }
     return html`
-      <header>
-        <span class="brand">${this.info?.name ?? 'Mosaikit'}</span>
-        <span class="muted">${this.info ? `v${this.info.version}` : nothing}</span>
-        <span class="spacer"></span>
-        ${this.renderOrganizationSelector()}<span>${this.account.displayName}</span>
-        <button class="secondary" @click=${this.signOut}>Sign out</button>
+      <header class="top">
+        <span class="brand"
+          >${mark}<span class="name">${this.info?.name ?? 'Mosaikit'}</span
+          ><span class="version">${this.info ? `v${this.info.version}` : nothing}</span></span
+        >
+        ${this.renderSearch()} ${this.renderAccount()}
       </header>
       ${this.renderWorkspace()}
     `;
+  }
+
+  /** The search of the top bar: apps and pages by title, until the global search (MK-040). */
+  private renderSearch(): unknown {
+    const found = this.searchResults();
+    const open = found.length > 0;
+    return html`<div class="search">
+      ${searchIcon}
+      <input
+        type="search"
+        role="combobox"
+        aria-label="Search apps and pages"
+        placeholder="Search apps and pages"
+        aria-expanded=${open ? 'true' : 'false'}
+        aria-controls="search-results"
+        aria-autocomplete="list"
+        aria-activedescendant=${open ? `search-${String(this.searchIndex)}` : nothing}
+        .value=${this.searchText}
+        @input=${this.typeSearch}
+        @keydown=${this.keySearch}
+        @blur=${this.leaveSearch}
+      />
+      ${
+        open
+          ? html`<ul id="search-results" role="listbox" aria-label="Apps and pages">
+              ${found.map(
+                (item, index) =>
+                  html`<li
+                    id=${`search-${String(index)}`}
+                    role="option"
+                    aria-selected=${index === this.searchIndex ? 'true' : 'false'}
+                    @mousedown=${(event: Event) => {
+                      event.preventDefault();
+                      this.go(item.route);
+                    }}
+                  >
+                    ${item.title}
+                  </li>`,
+              )}
+            </ul>`
+          : nothing
+      }
+    </div>`;
+  }
+
+  /** The menu of the person: who is signed in, the organization, sign-out. */
+  private renderAccount(): unknown {
+    const account = this.account;
+    if (!account) {
+      return nothing;
+    }
+    const name = account.displayName;
+    return html`<button
+        class="account"
+        aria-label=${`Account: ${name}`}
+        aria-haspopup="dialog"
+        aria-expanded=${this.menuOpen ? 'true' : 'false'}
+        @click=${this.toggleMenu}
+      >
+        <span class="avatar" aria-hidden="true">${initials(name)}</span>
+      </button>
+      ${
+        this.menuOpen
+          ? html`<div class="menu" role="dialog" aria-label="Account" @keydown=${this.keyMenu}>
+              <div class="who">
+                <span class="avatar" aria-hidden="true">${initials(name)}</span>
+                <span><strong>${name}</strong><span class="muted">${account.username}</span></span>
+              </div>
+              ${this.renderOrganizationSelector()}
+              <button class="secondary" @click=${this.signOut}>Sign out</button>
+            </div>`
+          : nothing
+      }`;
+  }
+
+  /** The apps of the app bar, the kernel pages and the search results share this shape. */
+  private destinations(): { title: string; route: string }[] {
+    return [
+      { title: 'Home', route: '/' },
+      ...this.entries.map((entry) => ({ title: entry.title, route: entry.route })),
+      ...(this.isPlatformAdmin()
+        ? ADMIN_PAGES.map((page) => ({ title: page.title, route: page.path }))
+        : []),
+    ];
+  }
+
+  private searchResults(): { title: string; route: string }[] {
+    return matching(this.destinations(), this.searchText).slice(0, 8);
+  }
+
+  private readonly typeSearch = (event: Event): void => {
+    this.searchText = (event.target as HTMLInputElement).value;
+    this.searchIndex = 0;
+  };
+
+  private readonly keySearch = (event: KeyboardEvent): void => {
+    const found = this.searchResults();
+    if (event.key === 'ArrowDown' && found.length > 0) {
+      event.preventDefault();
+      this.searchIndex = (this.searchIndex + 1) % found.length;
+    } else if (event.key === 'ArrowUp' && found.length > 0) {
+      event.preventDefault();
+      this.searchIndex = (this.searchIndex - 1 + found.length) % found.length;
+    } else if (event.key === 'Enter') {
+      const chosen = found[this.searchIndex];
+      if (chosen) {
+        event.preventDefault();
+        this.go(chosen.route);
+      }
+    } else if (event.key === 'Escape') {
+      this.searchText = '';
+    }
+  };
+
+  private readonly leaveSearch = (): void => {
+    this.searchText = '';
+  };
+
+  private readonly toggleMenu = (): void => {
+    this.menuOpen = !this.menuOpen;
+  };
+
+  private readonly keyMenu = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      this.menuOpen = false;
+      this.renderRoot.querySelector<HTMLButtonElement>('.account')?.focus();
+    }
+  };
+
+  /** Opens a page of the shell, as the links of the app bar do. */
+  private go(route: string): void {
+    this.searchText = '';
+    this.menuOpen = false;
+    history.pushState(null, '', route);
+    this.path = route;
   }
 
   /** The sign-in page (mk-sign-in), which tells the shell what the person asked for. */
@@ -442,15 +817,17 @@ export class MkShell extends LitElement {
     if (!this.isPlatformAdmin()) {
       return nothing;
     }
-    return ADMIN_PAGES.map(
-      (page) =>
-        html`<a
-          href=${page.path}
-          aria-current=${this.path === page.path ? 'page' : 'false'}
-          @click=${this.navigate}
-          >${page.title}</a
-        >`,
-    );
+    return html`<span class="separator"></span>${ADMIN_PAGES.map(
+        (page) =>
+          html`<a
+            href=${page.path}
+            aria-current=${this.path === page.path ? 'page' : 'false'}
+            @click=${this.navigate}
+            >${page.path === '/admin/plugins' ? pluginsIcon : settingsIcon}<span
+              >${page.title}</span
+            ></a
+          >`,
+      )}`;
   }
 
   private renderWorkspace(): unknown {
@@ -458,34 +835,46 @@ export class MkShell extends LitElement {
     const failures =
       failed.length > 0 ? `${String(failed.length)} plugins could not be loaded.` : nothing;
     return html`
-      <div class="body">
-        <nav aria-label="Apps">
-          <a href="/" aria-current=${this.path === '/' ? 'page' : 'false'} @click=${this.navigate}
-            >Home</a
-          >
-          ${this.entries.map(
-            (entry) =>
-              html`<a
-                href=${entry.route}
-                aria-current=${this.path === entry.route ? 'page' : 'false'}
-                @click=${this.navigate}
-                >${entry.title}</a
-              >`,
-          )}
-          ${this.renderAdminLink()}
-        </nav>
-        <main id="app-area">
-          ${this.renderOrganizationNotice()}
-          ${
-            entryForPath(this.entries, this.path) || this.showsAdmin()
-              ? nothing
-              : html`${this.renderAssistant()}${this.renderPendingActions()}
-                  <h1>Welcome, ${this.account?.displayName}</h1>
-                  <p class="muted">${this.entries.length} apps available. ${failures}</p>`
-          }
-          <div id="app-host"></div>
-        </main>
-      </div>
+      <nav class="rail" aria-label="Apps">
+        <a href="/" aria-current=${this.path === '/' ? 'page' : 'false'} @click=${this.navigate}
+          >${homeIcon}<span>Home</span></a
+        >
+        ${this.entries.map(
+          (entry) =>
+            html`<a
+              href=${entry.route}
+              aria-current=${this.path === entry.route ? 'page' : 'false'}
+              @click=${this.navigate}
+              >${appIcon(entry)}<span>${entry.title}</span></a
+            >`,
+        )}
+        ${this.renderAdminLink()}
+      </nav>
+      <main id="app-area">
+        ${this.renderOrganizationNotice()}
+        ${
+          entryForPath(this.entries, this.path) || this.showsAdmin()
+            ? nothing
+            : html`${this.renderAssistant()}${this.renderPendingActions()}
+                <h1>Welcome, ${this.account?.displayName}</h1>
+                <p class="muted">${this.entries.length} apps available. ${failures}</p>
+                ${
+                  this.entries.length > 0
+                    ? html`<ul class="apps" aria-label="Your apps">
+                        ${this.entries.map(
+                          (entry) =>
+                            html`<li>
+                              <a href=${entry.route} @click=${this.navigate}
+                                >${appIcon(entry)}<span>${entry.title}</span></a
+                              >
+                            </li>`,
+                        )}
+                      </ul>`
+                    : nothing
+                }`
+        }
+        <div id="app-host"></div>
+      </main>
     `;
   }
 
@@ -709,6 +1098,7 @@ export class MkShell extends LitElement {
   };
 
   private clearSession(): void {
+    this.menuOpen = false;
     clearTimeout(this.refreshTimer);
     clearInterval(this.draftTimer);
     clearInterval(this.watchTimer);
@@ -838,4 +1228,55 @@ declare global {
   interface HTMLElementTagNameMap {
     'mk-shell': MkShell;
   }
+}
+
+const icon = (paths: unknown): unknown =>
+  html`<svg
+    viewBox="0 0 24 24"
+    width="24"
+    height="24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    ${paths}
+  </svg>`;
+
+const homeIcon = icon(
+  svg`<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" />`,
+);
+const pluginsIcon = icon(
+  svg`<rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><path d="M16.5 13v7M13 16.5h7" />`,
+);
+const settingsIcon = icon(
+  svg`<path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" />`,
+);
+const searchIcon = html`<svg
+  viewBox="0 0 24 24"
+  width="16"
+  height="16"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  aria-hidden="true"
+>
+  <circle cx="11" cy="11" r="6.5" />
+  <path d="m16 16 4 4" />
+</svg>`;
+const mark = html`<svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true">
+  <rect x="1" y="1" width="12" height="12" rx="3" fill="#ffffff" />
+  <rect x="15" y="1" width="12" height="12" rx="3" fill="#ffffff" opacity="0.6" />
+  <rect x="1" y="15" width="12" height="12" rx="3" fill="#ffffff" opacity="0.4" />
+  <rect x="15" y="15" width="12" height="12" rx="3" fill="#ffffff" opacity="0.8" />
+</svg>`;
+
+/** The icon of an app: its own file, or a tile with its initials. */
+function appIcon(entry: LauncherEntry): unknown {
+  return entry.icon
+    ? html`<img src=${entry.icon} alt="" />`
+    : html`<span class="tile" aria-hidden="true">${initials(entry.title)}</span>`;
 }

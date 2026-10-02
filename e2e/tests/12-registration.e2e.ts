@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { ORGANIZATION } from '../support/env.js';
 import { confirmationLink, mailsTo } from '../support/mail.js';
-import { openApp, signIn } from '../support/shell.js';
+import { openApp, signIn, signOut } from '../support/shell.js';
 
 const PASSWORD = 'Registrata-2026-sicura';
 
@@ -60,7 +60,7 @@ test.describe('MK-048 Local registration confirmed by mail', () => {
     await expect(page.getByRole('heading', { name: 'Welcome, Luigi Verdi' })).toBeVisible();
 
     // A link works once.
-    await page.getByRole('button', { name: 'Sign out' }).click();
+    await signOut(page);
     await page.goto(first);
     await expect(page.getByRole('alert')).toContainText('does not work any more');
     expect(mailsTo(email)[0]?.subject).toBe('Confirm your email address');

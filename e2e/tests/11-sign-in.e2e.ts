@@ -4,7 +4,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { MARIO, type Person } from '../support/env.js';
 import { defaultSettings } from '../support/installation.js';
-import { restart } from '../support/shell.js';
+import { restart, signOut } from '../support/shell.js';
 
 const DAY = 24 * 60 * 60;
 
@@ -54,7 +54,7 @@ test.describe('MK-047 Sign-in page with "remember me"', () => {
     await expect(again.getByRole('heading', { name: /Welcome/ })).toBeVisible();
 
     const stolen = (await again.context().cookies()).filter((cookie) => cookie.expires > 0);
-    await again.getByRole('button', { name: 'Sign out' }).click();
+    await signOut(again);
     await expect(again.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     // A copy of the cookie taken before the sign-out signs nobody in.
     const thief = await browser.newContext();

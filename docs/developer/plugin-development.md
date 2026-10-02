@@ -66,12 +66,18 @@ actions:                       # tools for assistants and MCP clients (MK-015)
 database:
   schema: p_hello              # owned by the plugin; migrations in db/ (default)
 contributes:
-  launcher.app:
+  rail.app:                    # the app bar of the shell (MK-025)
     - id: hello
       title: Hello
       route: /app/hello        # /app/<name>
       element: example-hello   # custom element rendered for the route
+      icon: web/icon.svg       # 24 × 24 SVG or PNG of the plugin; a tile with the initials otherwise
+      order: 50                # position in the app bar, smaller first; 100 by default
 ```
+
+`launcher.app`, the point of the first versions, is still shown in the app bar during the 0.x
+versions, with a warning in the status of the plugin (`warnings` in `GET /api/v1/plugins`): rename
+it to `rail.app`.
 
 ## Frontend contract
 
